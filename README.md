@@ -38,4 +38,4 @@
 
 ## Project Links
 
-* **Trello Board:** [Insert your Trello Board URL here]
+* **Trello Board:** [https://trello.com/invite/b/699055a25d002d93008bee54/ATTIb5663ce079b4dbd5a988e69b9a963ac39055F0DD/404-01-project-csce3444]
