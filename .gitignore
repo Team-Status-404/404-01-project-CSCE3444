@@ -29,3 +29,4 @@ __pycache__/
 # personal notes/files
 # =========================
 .notes
+*.pem
