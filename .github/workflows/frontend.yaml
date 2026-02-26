@@ -1,0 +1,43 @@
+name: CI for frontend
+
+on: 
+    push:
+        branches: [ "main", "dev" ]
+    pull_request:
+        branches: [ "main" ]
+    workflow_dispatch:
+
+jobs:
+    build-plus-test:
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: ./frontend
+        
+        steps:
+            - name: checkout code
+              uses: actions/checkout@v4
+
+            - name: use node.js 20.x
+              uses: actions/setup-node@v4
+              with:
+                node-version: '20.x'
+                cache: 'npm'
+                cache-dependency-path: 'frontend/package-lock.json'
+
+            - name: install the dependencies
+              run: npm ci
+
+            - name: run lint
+              run: npm run lint
+
+            - name: check to build the project
+              run: npm run build
+
+            - name: check that dev server actually runs on localhost + default port
+              run: |
+                npm run dev &
+                DEV_SERVER_PID=$!
+                npx wait-on http://localhost:5173 --timeout 10000
+                kill $DEV_SERVER_PID
