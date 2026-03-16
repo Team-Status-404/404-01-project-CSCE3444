@@ -1,12 +1,10 @@
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
 from sentiment import analyze_headline
 
 app = Flask(__name__)
-# CORS allows your React frontend to securely request data from this backend
-CORS(app) 
+CORS(app)
 
 @app.route('/')
 def home():
@@ -15,21 +13,27 @@ def home():
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker):
     """
-    Fetches live stock price data using the yfinance library
+    Fetch stock price using yfinance download
     """
     try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(period="1d")
-        
+        data = yf.download(
+            ticker.upper(),
+            period="5d",
+            interval="1d",
+            progress=False,
+            auto_adjust=False
+        )
+
         if data.empty:
             return jsonify({"error": "Stock ticker not found"}), 404
-            
-        current_price = data['Close'].iloc[-1]
-        
+
+        current_price = float(data["Close"].dropna().iloc[-1])
+
         return jsonify({
             "ticker": ticker.upper(),
             "current_price": round(current_price, 2)
-        })
+        }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -43,5 +47,4 @@ def test_sentiment():
     return jsonify(result)
 
 if __name__ == '__main__':
-    # Runs the server on port 5000
     app.run(debug=True, port=5000)
