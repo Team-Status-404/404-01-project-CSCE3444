@@ -1,0 +1,45 @@
+name: CI for Backend
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8  # Adding a linter for code quality
+
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Check that Flask server starts
+        run: |
+          # We start the app in the background, wait 5 seconds, then kill it.
+          # If it crashes before 5 seconds, the workflow fails.
+          export NEWSDATA_API_KEY="test_key"
+          python app.py &
+          APP_PID=$!
+          sleep 5
+          kill $APP_PID

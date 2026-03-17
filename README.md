@@ -1,5 +1,8 @@
 # 404-01-project-CSCE3444
 
+![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg)
+![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg)
+
 **Team Name:** 404
 
 **Project Idea:** StockIQ is a comprehensive software engineering project designed to provide contextual insights into any U.S.-traded stock.
