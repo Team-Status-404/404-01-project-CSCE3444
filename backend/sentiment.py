@@ -6,7 +6,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 def get_market_chatter_sentiment(ticker, analyzer):
     """
     Tier 1: Scans Yahoo Finance trending news & retail blogs.
-    Replaces StockTwits to guarantee 100% uptime with zero IP rate limits.
+    Replaces StockTwits
     """
     try:
         stock = yf.Ticker(ticker.upper())
