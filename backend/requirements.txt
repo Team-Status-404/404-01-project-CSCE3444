@@ -1,7 +1,7 @@
-Flask==3.0.2
-Flask-Cors==4.0.0
+Flask==3.0.3
+Flask-Cors==4.0.1
 yfinance==0.2.36
 vaderSentiment==3.3.2
-requests==2.31.0
+requests==2.32.3
 python-dotenv==1.0.1
 praw==7.7.1
