@@ -1,7 +1,7 @@
 # 404-01-project-CSCE3444
 
-![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg)
-![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg)
+![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg?branch=dev)
+![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg?branch=dev)
 
 **Team Name:** 404
 
