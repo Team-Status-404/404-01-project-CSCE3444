@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
 from dotenv import load_dotenv
+from database import access_db_tables
 
 # Import the advanced sentiment engine (from your dev branch)
 from sentiment import analyze_stock_hype
@@ -63,4 +64,5 @@ def get_stock_sentiment(ticker):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    access_db_tables()
     app.run(debug=True, port=5000)
