@@ -5,3 +5,4 @@ vaderSentiment==3.3.2
 requests==2.32.3
 python-dotenv==1.0.1
 praw==7.7.1
+psycopg2==2.9.11
