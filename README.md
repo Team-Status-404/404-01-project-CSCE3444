@@ -1,6 +1,6 @@
-# StockIQ Frontend (Safe Submission Version)
+# StockIQ Frontend 
 
-This project is a cleaned React + TypeScript + Vite frontend for the StockIQ fintech sprint task.
+This project is a cleaned React + TypeScript + Vite frontend for the StockIQ fintech which i have done as needed by sprint task.
 
 ## Pages Included
 - Login page
@@ -28,4 +28,4 @@ npm run build
 ## Notes
 - This is a frontend-only submission.
 - No real backend authentication or live stock API is connected.
-- Static sample data is used to match the sprint requirement safely.
+- Static sample data are used which is used to match sprint requirement safely.
