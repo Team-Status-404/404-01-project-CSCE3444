@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 
 const links = [
   { label: 'Dashboard', path: '/dashboard' },
-  { label: 'Stock Detail', path: '/stock/nvda' },
-  { label: 'Login', path: '/login' }
+  { label: 'Markets', path: '/markets' },
+  { label: 'Login', path: '/login' } 
 ];
 
 export default function Sidebar() {
