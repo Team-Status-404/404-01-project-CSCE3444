@@ -1,6 +1,7 @@
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import { keyTakeaways, nvdaStats } from '../data/stocks';
+import HypeMeter from '../components/HypeMeter';
 
 export default function StockDetailPage() {
   return (
