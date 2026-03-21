@@ -1,5 +1,9 @@
 name: "CodeQL Advanced"
 
+# Forces GitHub Actions to use Node 24 to prevent deprecation warnings
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [ "main", "dev" ]
