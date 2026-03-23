@@ -1,5 +1,9 @@
 name: CI for Frontend (React/TypeScript)
 
+# Forces GitHub Actions to use Node 24 to prevent deprecation warnings
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # ------------------------------------------------------------------------------
 # TRIGGERS: When does this workflow run?
 # This ensures that any code pushed to 'main' or 'dev', or any Pull Request 

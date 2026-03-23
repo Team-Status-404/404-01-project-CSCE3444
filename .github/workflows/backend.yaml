@@ -1,5 +1,9 @@
 name: CI for Backend (Flask/Python)
 
+# Forces GitHub Actions to use Node 24 to prevent deprecation warnings
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # ------------------------------------------------------------------------------
 # TRIGGERS: When does this workflow run?
 # Keeps the backend pipeline synchronized with the frontend release cycle.
