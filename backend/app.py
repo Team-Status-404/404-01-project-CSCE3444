@@ -24,11 +24,15 @@ def home():
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker):
     """
-    Fetch stock price, name, and market cap using yfinance efficiently.
+    Fetch stock price, name, and market cap efficiently.
     """
     try:
-        result = stock_data(ticker)
-        return jsonify(result)
+        # Unpack the dictionary and the status code
+        result_dict, status_code = stock_data(ticker)
+        
+        # jsonify the dictionary, and return the status code alongside it
+        return jsonify(result_dict), status_code
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
