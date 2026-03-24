@@ -1,0 +1,66 @@
+name: CI for Frontend (React/TypeScript)
+
+# Forces GitHub Actions to use Node 24 to prevent deprecation warnings
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# ------------------------------------------------------------------------------
+# TRIGGERS: When does this workflow run?
+# This ensures that any code pushed to 'main' or 'dev', or any Pull Request 
+# targeting 'main', must pass these checks before being merged.
+# ------------------------------------------------------------------------------
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-plus-test:
+    # --------------------------------------------------------------------------
+    # ENVIRONMENT: What operating system runs this test?
+    # We use the latest Ubuntu Linux environment provided by GitHub.
+    # --------------------------------------------------------------------------
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # All commands below will execute inside the 'frontend' folder
+        working-directory: ./frontend
+
+    steps:
+      # Step 1: Pull the repository code into the virtual runner
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the Node.js environment
+      # Using Node 20 ensures compatibility with modern Vite/React setups
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Caches dependencies to speed up future workflow runs
+          cache-dependency-path: './frontend/package-lock.json'
+
+      # Step 3: Install dependencies exactly as defined in package-lock.json
+      # 'npm ci' (Clean Install) is used in CI/CD instead of 'npm install' 
+      # to guarantee exact version matches and prevent accidental upgrades.
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      # Step 4: Run the Linter
+      # Checks for bad coding practices, unused variables, and formatting issues.
+      - name: Enforce Code Quality (Linting)
+        run: npm run lint
+
+      # Step 5: Type Checking
+      # Validates that all TypeScript files are strictly typed without actually compiling them.
+      # This catches type mismatch errors early.
+      - name: Verify TypeScript Syntax
+        run: npx tsc --noEmit
+
+      # Step 6: Verify Production Build
+      # Ensures that the Vite application can successfully compile into static files
+      # without throwing memory errors or missing asset errors.
+      - name: Test Production Build Compilation
+        run: npm run build

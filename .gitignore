@@ -16,11 +16,18 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+*.log
 
 # =========================
-# OS & Secrets (CRITICAL)
+# OS, Secrets & Editor (CRITICAL)
 # =========================
 .DS_Store
 .env
 .env.local
 *.pem
+.vscode/
+
+# =========================
+# Personal notes/files
+# =========================
+.notes
