@@ -12,8 +12,14 @@ env:
 on:
   push:
     branches: [ "main", "dev" ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yaml' # Also run if I edit this specific workflow file
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yaml' # Also run if I edit this specific workflow file
 
 jobs:
   build-plus-test:
