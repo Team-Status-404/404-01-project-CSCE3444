@@ -9,7 +9,6 @@ from database import access_db_tables
 from sentiment import analyze_stock_hype
 from stock_data import get_stock
 
-from stock_data import stock_data
 
 
 # Load environment variables
