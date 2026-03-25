@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import StockDetailPage from './pages/StockDetailPage';
-import MarketsPage from './pages/MarketsPage'; // Add this import
+import MarketsPage from './pages/MarketsPage';
+import ProfilePage from './pages/ProfilePage'; // Add this import
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/markets" element={<MarketsPage />} />       
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/stock/nvda" element={<StockDetailPage />} />  
+      <Route path="/profile" element={<ProfilePage />} />  
     </Routes>
   );
 }
