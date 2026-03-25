@@ -6,7 +6,7 @@ app = Flask(__name__)
 CORS(app) # This allows your computer to talk to this API
 
 # --- Your Stock Logic ---
-def get_stock_data(ticker):
+def stock_data(ticker):
     try:
         stock = yf.Ticker(ticker.upper())
         # Fetch 1 month of data to ensure we have enough for a 5-day average
@@ -31,17 +31,6 @@ def get_stock_data(ticker):
     except Exception as e:
         return {"error": str(e)}, 500
 
-# --- The API URL Route ---
-# The <ticker> part makes the URL dynamic (it can be anything!)
-@app.route('/api/stock/<ticker>')
-def stock_endpoint(ticker):
-    data, status = get_stock_data(ticker)
-    return jsonify(data), status
-
-# Home route so you know the server is on
-@app.route('/')
-def home():
-    return "API is running! Try adding /api/stock/AAPL to the URL."
 
 if __name__ == "__main__":
     # This starts the server
