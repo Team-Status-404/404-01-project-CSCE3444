@@ -11,8 +11,14 @@ env:
 on:
   push:
     branches: [ "main", "dev" ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yaml' # Also run if I edit this specific workflow file
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yaml' # Also run if I edit this specific workflow file
 
 jobs:
   build-and-test:
@@ -32,11 +38,12 @@ jobs:
         uses: actions/checkout@v4
 
       # Step 2: Set up the Python environment
-      # Python 3.11 offers significant speed improvements over 3.10
-      - name: Set up Python 3.11
+      # Python 3.14
+      - name: Set up Python 3.14.3
+
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.14.3'
           cache: 'pip' # Speeds up workflow by caching downloaded pip packages
 
       # Step 3: Upgrade pip and install the project's exact requirements
@@ -59,7 +66,17 @@ jobs:
       - name: Verify Flask Server Startup
         env:
           # Injects the secret API key from GitHub Secrets into the virtual environment
+
+          # Database Configuration (Supabase PostgreSQL)
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          
+          # External APIs
           NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+          FINANCE_DATA_KEY: ${{ secrets.FINANCE_DATA_KEY }}
         run: |
           echo "Attempting to start Flask server..."
           # Start the server in the background using '&'
@@ -67,8 +84,8 @@ jobs:
           # Capture the Process ID (PID) of the Flask server
           APP_PID=$!
           
-          # Wait for 5 seconds to give Flask time to boot and potentially crash
-          sleep 5
+          # Wait for 7 seconds to give Flask time to boot and potentially crash
+          sleep 7
           
           # Check if the process is still running. If not, it crashed.
           if ps -p $APP_PID > /dev/null

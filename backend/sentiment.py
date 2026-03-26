@@ -1,36 +1,56 @@
 import os
 import requests
-import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+import requests
 
 def get_market_chatter_sentiment(ticker, analyzer):
     """
-    Tier 1: Scans Yahoo Finance trending news & retail blogs.
-    Replaces StockTwits
+    Tier 1: Scans StockTwits for live retail chatter and social sentiment.
+    Replaces the broken yfinance scraping method.
     """
     try:
-        stock = yf.Ticker(ticker.upper())
-        # yfinance automatically fetches the ~8 most recent trending articles/blogs
-        news = stock.news
+        # StockTwits free public endpoint for recent messages
+        url = f"https://api.stocktwits.com/api/2/streams/symbol/{ticker.upper()}.json"
         
-        if not news:
-            print(f"DEBUG: No Yahoo Finance chatter found for {ticker}")
+        # Adding a basic User-Agent header so they don't block us as a generic bot
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Origin": "https://stocktwits.com",
+            "Referer": "https://stocktwits.com/"
+        }
+        response = requests.get(url, headers=headers, timeout=5)
+        
+        # Catch errors if the ticker doesn't exist or we hit a rate limit
+        if response.status_code != 200:
+            print(f"DEBUG: StockTwits API Failed for {ticker}. Status: {response.status_code}")
+            return 0, 0
+            
+        data = response.json()
+        messages = data.get('messages', [])
+        
+        if not messages:
+            print(f"DEBUG: No StockTwits chatter found for {ticker}")
             return 0, 0
             
         total_compound = 0
-        volume = len(news)
+        volume = len(messages)
         
-        for article in news:
-            # We run VADER on the article titles
-            text = article.get('title', '')
+        for msg in messages:
+            # StockTwits user posts are stored in the 'body' key
+            text = msg.get('body', '')
             score = analyzer.polarity_scores(text)
             total_compound += score['compound']
             
         avg_score = total_compound / volume if volume > 0 else 0
-        return avg_score, volume
+        
+        # Return the VADER score and the amount of messages analyzed
+        return round(avg_score, 4), volume
         
     except Exception as e:
-        print(f"DEBUG: Yahoo Finance Chatter Error: {e}")
+        print(f"DEBUG: Chatter Error: {str(e)}")
         return 0, 0
 
 def get_news_sentiment(ticker, analyzer):

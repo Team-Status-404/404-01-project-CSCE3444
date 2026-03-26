@@ -371,3 +371,62 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+.form-layout {
+
+  display: grid;
+
+  grid-template-columns: 1.15fr 0.85fr;
+
+  gap: 18px;
+
+}
+
+.settings-form {
+
+  display: grid;
+
+  gap: 14px;
+
+  margin-top: 18px;
+
+}
+
+.settings-form label {
+
+  display: grid;
+
+  gap: 8px;
+
+  font-weight: 600;
+
+}
+
+.settings-form input,
+
+.settings-form select {
+
+  width: 100%;
+
+  border: 1px solid rgba(148, 163, 184, 0.24);
+
+  border-radius: 12px;
+
+  background: rgba(15, 23, 42, 0.92);
+
+  color: white;
+
+  padding: 12px 14px;
+
+}
+
+@media (max-width: 900px) {
+
+  .form-layout {
+
+    grid-template-columns: 1fr;
+
+  }
+
+}
+ 
