@@ -1,50 +1,49 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
-from sentiment import analyze_headline
+from dotenv import load_dotenv
+from database import access_db_tables
+
+
+# Import the advanced sentiment engine (from your dev branch)
+from sentiment import analyze_stock_hype
+from stock_data import get_stock
+
+
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app) 
 
 @app.route('/')
 def home():
     return jsonify({"message": "StockIQ Backend is running securely!"})
 
+
 @app.route('/api/stock/<ticker>', methods=['GET'])
-def get_stock_data(ticker):
+def get_stock_data(ticker): 
     """
-    Fetch stock price using yfinance download
+    Fetch stock price, name, and market cap efficiently.
     """
     try:
-        data = yf.download(
-            ticker.upper(),
-            period="5d",
-            interval="1d",
-            progress=False,
-            auto_adjust=False
-        )
-
-        if data.empty:
-            return jsonify({"error": "Stock ticker not found"}), 404
-
-        current_price = float(data["Close"].dropna().iloc[-1])
-
-        return jsonify({
-            "ticker": ticker.upper(),
-            "current_price": round(current_price, 2)
-        }), 200
-
+        result = get_stock(ticker)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/sentiment/test', methods=['GET'])
-def test_sentiment():
+@app.route('/api/sentiment/<ticker>', methods=['GET']) 
+def get_stock_sentiment(ticker):
     """
-    A quick test route to verify our VADER sentiment logic works
+    Returns the 0-100 Hype Score and Sentiment Tag for a given ticker.
     """
-    sample_headline = "Massive tech sell-off triggers market panic and drops shares by 20%"
-    result = analyze_headline(sample_headline)
-    return jsonify(result)
+    try:
+        result = analyze_stock_hype(ticker)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    access_db_tables()
     app.run(debug=True, port=5000)
