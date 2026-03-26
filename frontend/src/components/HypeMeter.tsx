@@ -107,14 +107,32 @@ export default function HypeMeter() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    fetchHypeScore(ticker).then((res) => {
-      if (active) {
-        setData(res);
-        setLoading(false);
+
+    // 1. Define an async function inside the effect
+    const loadHypeData = async () => {
+      setLoading(true); 
+      
+      try {
+        const res = await fetchHypeScore(ticker);
+        if (active) {
+          setData(res);
+        }
+      } catch (error) {
+        console.error("Failed to fetch hype score:", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-    });
-    return () => { active = false; };
+    };
+
+    // 2. Call the function
+    loadHypeData();
+
+    // 3. Cleanup to prevent memory leaks if the user clicks away early
+    return () => {
+      active = false;
+    };
   }, [ticker]);
 
   if (!data) return <div style={{ color: "#8892a0" }}>Loading gauge...</div>;
