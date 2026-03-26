@@ -6,7 +6,7 @@ from flask import jsonify
 
 def get_stock(ticker):
     ticker = ticker.upper()
-    current_time = datetime.datetime.now()
+    # current_time = datetime.datetime.now()
 
     """
     # 1. Check Cache for existing data within 5 minutes
