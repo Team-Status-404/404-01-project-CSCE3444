@@ -1,6 +1,5 @@
 import os
 import requests
-import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 import requests
