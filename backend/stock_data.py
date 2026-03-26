@@ -1,7 +1,7 @@
 import datetime
 import yfinance as yf 
 from flask import jsonify
-# Requirement FR-05: 5-Minute Cache (In-memory storage)
+# Requirement FR-05: 5-Minute Cache (In-memory storage) we could choose to do it this way, instead of with the database function
 #stock_cache = {}
 
 def get_stock(ticker):
