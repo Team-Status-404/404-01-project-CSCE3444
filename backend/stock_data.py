@@ -1,63 +1,67 @@
-import datetime
-import yfinance as yf 
-from flask import jsonify
-# Requirement FR-05: 5-Minute Cache (In-memory storage) we could choose to do it this way, instead of with the database function
-#stock_cache = {}
+import requests
+import os
+from dotenv import load_dotenv
 
-def get_stock(ticker):
+load_dotenv()
+API_KEY = os.getenv("FINANCE_DATA_KEY")
+
+def stock_data(ticker):
+    if not API_KEY:
+        return {"error": "Server configuration error: Missing API Key."}, 500
+
     ticker = ticker.upper()
-    # current_time = datetime.datetime.now()
-
-    """
-    # 1. Check Cache for existing data within 5 minutes
-    if ticker in stock_cache:
-        cached_entry = stock_cache[ticker]
-        if (current_time - cached_entry['timestamp']).total_seconds() < 300:
-            return jsonify({
-                "status": "success",
-                "source": "cache",
-                "data": cached_entry['data']
-            })
-    """
-
-    # 2. Fetch Fresh Data (Requirement FR-06)
+    
     try:
-        stock_obj = yf.Ticker(ticker)
+        # --- PROFILE ENDPOINT ---
+        profile_url = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={API_KEY}"
+        profile_resp = requests.get(profile_url)
         
-        # Get Info for Full Company Name
-        info = stock_obj.info
+        # NEW: Catch non-JSON HTML error pages from FMP
+        if profile_resp.status_code != 200:
+            print(f"Profile API Failed: {profile_resp.text}")
+            return {"error": f"FMP Profile Endpoint rejected {ticker}. Status: {profile_resp.status_code}"}, 500
+            
+        profile_response = profile_resp.json()
         
-        # Get 1 month of history for moving average calculation
-        hist = stock_obj.history(period="1mo")
+        if isinstance(profile_response, dict) and "Error Message" in profile_response:
+            return {"error": f"API Provider Error: {profile_response['Error Message']}"}, 403
 
-        if hist.empty:
-            return jsonify({"status": "error", "message": "Ticker not found"}), 404
+        if not profile_response:
+            return {"error": f"No data found for {ticker}."}, 404
 
-        # Calculate metrics defined in Class Diagram
-        current_price = hist['Close'].iloc[-1]
-        moving_avg_5d = hist['Close'].tail(5).mean()
+        name = profile_response[0].get('companyName', ticker)
 
-        # Cleaned Data Object (No currency, No sector)
-        processed_data = {
-            "ticker": ticker,
-            "companyName": info.get('longName', 'N/A'),
-            "currentPrice": round(float(current_price), 2),
-            "movingAverage5Day": round(float(moving_avg_5d), 2)
-        }
+        # --- HISTORICAL ENDPOINT ---
+        history_url = f"https://financialmodelingprep.com/stable/historical-price-eod/full?symbol={ticker}&apikey={API_KEY}"
+        history_resp = requests.get(history_url)
+        
+        # NEW: Catch non-JSON HTML error pages from FMP
+        if history_resp.status_code != 200:
+            print(f"History API Failed: {history_resp.text}")
+            return {"error": f"FMP History Endpoint rejected {ticker}. Status: {history_resp.status_code}"}, 500
 
-        # 3. Update Cache
-        """
-        stock_cache[ticker] = {
-            "timestamp": current_time,
-            "data": processed_data
-        }
-        """
+        history_response = history_resp.json()
+
+        if isinstance(history_response, dict) and "Error Message" in history_response:
+             return {"error": f"API Provider Error: {history_response['Error Message']}"}, 403
+
+        if not isinstance(history_response, list) or len(history_response) == 0:
+            return {"error": "Historical data unavailable."}, 404
+            
+        historical_data = history_response
+        current_price = historical_data[0]['close']
+        
+        recent_5_days = historical_data[:5]
+        closing_prices = [day['close'] for day in recent_5_days]
+        moving_avg_5d = sum(closing_prices) / len(closing_prices)
+
         return {
-            "status": "success",
-            "source": "live_api",
-            "data": processed_data
-        }
+            "ticker": ticker,
+            "name": name,
+            "current_price": round(current_price, 2),
+            "moving_average_5d": round(moving_avg_5d, 2),
+            "status": "Success!"
+        }, 200
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}, 500
-    
+        return {"error": f"Internal Server Error: {str(e)}"}, 500
