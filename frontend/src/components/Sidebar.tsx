@@ -1,19 +1,28 @@
-import { Link, useLocation } from 'react-router-dom';
-
-const links = [
-  { label: 'Dashboard', path: '/dashboard' },
-  { label: 'Markets', path: '/markets' },
-  { label: 'Login', path: '/login' },
-  { label: 'Profile', path: '/profile' }  
-];
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
+
+  const links = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Markets', path: '/markets' },
+    ...(isAuthenticated
+      ? [{ label: 'Profile', path: '/profile' }]
+      : [{ label: 'Login', path: '/login' }]),
+  ];
+
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
 
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <div className="brand-logo">SI</div>
+        <img src="/logo.png" alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
         <div>
           <p className="brand-name">StockIQ</p>
           <p className="brand-subtitle">Fintech UI</p>
@@ -33,7 +42,20 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        {isAuthenticated && (
+          <button className="nav-link logout-btn" onClick={handleLogout}>
+            Sign Out
+          </button>
+        )}
       </nav>
+
+      {isAuthenticated && user && (
+        <div className="sidebar-user">
+          <div className="sidebar-avatar">{user.username.charAt(0).toUpperCase()}</div>
+          <span>{user.username}</span>
+        </div>
+      )}
     </aside>
   );
 }

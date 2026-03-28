@@ -7,7 +7,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 # --- NEW OOP DOMAIN MODULES ---
 from models.market_intelligence import Stock, SentimentAnalyzer
 from models.portfolio import WatchList, Alerts
-from models.user_management import User
+from models.user_management import User, token_required
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
@@ -125,30 +125,64 @@ def toggle_alert():
 @app.route('/api/user/register', methods=['POST'])
 def register():
     data = request.json
-    # Lance will use User.register() here
-    pass
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not username or not email or not password:
+        return jsonify({"status": "error", "message": "Missing username, email, or password"}), 400
+
+    result = User.register(username, email, password)
+    status_code = 201 if result["status"] == "success" else 400
+    return jsonify(result), status_code
 
 @app.route('/api/user/login', methods=['POST'])
 def login():
     data = request.json
-    # Lance will use User.login() here
-    pass
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"status": "error", "message": "Missing email or password"}), 400
+
+    result = User.login(email, password)
+    status_code = 200 if result["status"] == "success" else 401
+    return jsonify(result), status_code
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_auth():
+    """Verifies Google OAuth token and logs in or auto-registers the user."""
+    data = request.json
+    credential = data.get('credential')
+
+    if not credential:
+        return jsonify({"status": "error", "message": "Missing Google credential"}), 400
+
+    result = User.google_login(credential)
+    status_code = 200 if result["status"] == "success" else 401
+    return jsonify(result), status_code
+
+@app.route('/api/user/delete', methods=['DELETE'])
+@token_required
+def delete_account():
+    """Deletes the authenticated user's account."""
+    current_user = User(request.current_user_id, request.current_username, "")
+    result = current_user.delete_account()
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
 
 @app.route('/api/user/profile', methods=['PUT'])
+@token_required
 def update_profile():
-    """Updates user information."""
+    """Updates user information (protected — requires JWT)."""
     data = request.json
-    user_id = data.get('user_id')
     new_username = data.get('username')
     new_email = data.get('email')
-    
-    # Use User.updateProfile() method here
-    # Example:
-    # current_user = User(user_id, "placeholder", "placeholder")
-    # result = current_user.updateProfile(new_username, new_email)
-    pass
+
+    current_user = User(request.current_user_id, request.current_username, "")
+    result = current_user.updateProfile(new_username, new_email)
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
 
 if __name__ == '__main__':
-    # Removed access_db_tables()
-    # Supabase handles our schema now, so we don't need to build tables on startup.
     app.run(debug=True, port=5000)
