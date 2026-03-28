@@ -185,6 +185,4 @@ def update_profile():
     return jsonify(result), status_code
 
 if __name__ == '__main__':
-    # Removed access_db_tables()
-    # Supabase handles our schema now, so we don't need to build tables on startup.
     app.run(debug=True, port=5000)

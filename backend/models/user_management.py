@@ -33,6 +33,7 @@ def get_db_connection():
     )
 
 
+"""We are now able to use @token_required, under any route in our app.py to protect the route from unauthorized users"""
 def token_required(f):
     """Decorator that protects routes by requiring a valid JWT in the Authorization header."""
     @wraps(f)
@@ -58,6 +59,7 @@ def token_required(f):
     return decorated
 
 
+"""Creates a user token specific to the user, after they enter their username and password"""
 def _generate_token(user_id: int, username: str) -> str:
     """Creates a JWT containing user identity with an expiration time."""
     payload = {
@@ -211,6 +213,11 @@ class User:
             if conn:
                 conn.close()
 
+    def reset_password(self) -> Dict[str, Any]:
+        """Need a function to reset the user password, please implement this Lance"""
+        pass
+    
+    
     def delete_account(self) -> Dict[str, Any]:
         """Deletes the user from the database entirely (ON DELETE CASCADE handles watchlist)."""
         conn = None
@@ -228,6 +235,7 @@ class User:
         finally:
             if conn:
                 conn.close()
+                
 
     def updateProfile(self, new_username: str = None, new_email: str = None) -> Dict[str, Any]:
         """
@@ -236,8 +244,9 @@ class User:
         # TODO for David:
         # 1. Connect to the database using get_db_connection().
         # 2. Write an UPDATE query targeting the 'users' table where id = self._userID.
-        # 3. You can update the username, the email, or both depending on what Yasas sends.
-        # 4. If the database update is successful, update self._username and self._email.
+        # 3. You can update the username, the email, or both depending on what the user sends.
+        # 4. If the database update is successful, update the pself._username and self._email.
         # 5. Catch 'UniqueViolation' errors in case they pick an email that is already taken!
+        pass
 
         return {"status": "pending", "message": "David is building this!"}
