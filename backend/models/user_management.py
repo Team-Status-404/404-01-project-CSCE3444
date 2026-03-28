@@ -10,6 +10,7 @@ from flask import request, jsonify
 from dotenv import load_dotenv
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from datetime import datetime, timezone, timedelta
 
 load_dotenv()
 
@@ -65,8 +66,8 @@ def _generate_token(user_id: int, username: str) -> str:
     payload = {
         "user_id": user_id,
         "username": username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=JWT_EXPIRATION_HOURS),
-        "iat": datetime.datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
