@@ -64,7 +64,6 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-panel">
         <div className="login-copy">
-          <span className="eyebrow">Secure Authentication</span>
           <h1>StockIQ AI Market Dashboard</h1>
           <p>
             Track stocks, monitor sentiment, and get AI-powered insights all in one place.
