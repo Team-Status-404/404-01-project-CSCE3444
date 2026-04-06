@@ -248,6 +248,57 @@ class User:
         # 3. You can update the username, the email, or both depending on what the user sends.
         # 4. If the database update is successful, update the pself._username and self._email.
         # 5. Catch 'UniqueViolation' errors in case they pick an email that is already taken!
-        pass
+        conn = None
+        try:
+            # Ensure there is at least one field to update
+            if new_username is None and new_email is None:
+                return {"status": "error", "message": "No fields to update"}
 
-        return {"status": "pending", "message": "Yasas is building this!"}
+            fields = []
+            params = []
+
+            if new_username is not None:
+                fields.append("username = %s")
+                params.append(new_username)
+
+            if new_email is not None:
+                fields.append("email = %s")
+                params.append(new_email)
+
+            # Add user ID for WHERE clause
+            params.append(self._userID)
+
+            query = "UPDATE users SET " + ", ".join(fields) + " WHERE id = %s"
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(query, tuple(params))
+            conn.commit()
+            cur.close()
+
+            # Update the in-memory user object
+            if new_username is not None:
+                self._username = new_username
+            if new_email is not None:
+                self._email = new_email
+
+            return {
+                "status": "success",
+                "message": "Profile updated",
+                "username": self._username,
+                "email": self._email,
+            }
+        except errors.UniqueViolation:
+            if conn:
+                conn.rollback()
+            return {
+                "status": "error",
+                "message": "Username or email already exists",
+            }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            if conn:
+                conn.close()

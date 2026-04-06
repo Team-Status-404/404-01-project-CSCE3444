@@ -108,7 +108,6 @@ export default function HypeMeter() {
   useEffect(() => {
     let active = true;
 
-    // 1. Define an async function inside the effect
     const loadHypeData = async () => {
       setLoading(true); 
       
@@ -126,10 +125,8 @@ export default function HypeMeter() {
       }
     };
 
-    // 2. Call the function
     loadHypeData();
 
-    // 3. Cleanup to prevent memory leaks if the user clicks away early
     return () => {
       active = false;
     };
@@ -153,8 +150,10 @@ export default function HypeMeter() {
   const endPt = polarToXY(cx, cy, r, endAngle);
   const currentPt = polarToXY(cx, cy, r, currentAngle);
 
+  // fixed the guage going out of proportion
+  const largeArcFlag = (score / 100) * totalAngle > 180 ? 1 : 0;
   const trackArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 1 1 ${endPt.x} ${endPt.y}`;
-  const fillArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 ${score > 50 ? 1 : 0} 1 ${currentPt.x} ${currentPt.y}`;
+  const fillArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${currentPt.x} ${currentPt.y}`;
 
   return (
     <div style={{ position: "relative", width: 260, background: "transparent", borderRadius: 16, padding: 20, fontFamily: "inherit" }}>
