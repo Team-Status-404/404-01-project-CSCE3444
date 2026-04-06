@@ -14,6 +14,7 @@ class WatchList:
     def __init__(self, user_id: int):
         self._userID: int = user_id
 
+    # helper function
     def checkLimit(self) -> int:
         """Counts how many stocks the user is watching in the database."""
         conn = None
@@ -29,6 +30,26 @@ class WatchList:
         except Exception as e:
             print(f"DEBUG DB Error checking limit: {e}")
             return 5  # Failsafe: block inserts if DB is down
+        finally:
+            if conn is not None:
+                conn.close()
+               
+    # helper function 
+    def get_all_tickers(self) -> list:
+        """Returns a list of ticker strings for the user."""
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT ticker FROM watchlist WHERE user_id = %s;", (self._userID,))
+            rows = cur.fetchall()
+            cur.close()
+            
+            # Extracts the first item from each tuple returned by the DB
+            return [row[0] for row in rows] 
+        except Exception as e:
+            print(f"DEBUG DB Error fetching tickers: {e}")
+            return []
         finally:
             if conn is not None:
                 conn.close()
