@@ -4,13 +4,13 @@ import { useAuth } from "../context/AuthContext";
 
 const API_URL = "http://localhost:5000";
 
-// ─── TYPES ─────────────────────────────────────────────────────────────────
+// TYPES
 interface AlertModalProps {
   ticker: string;
   onClose: () => void;
 }
 
-// ─── VALIDATION HELPER ─────────────────────────────────────────────────────
+// VALIDATION HELPER
 function validateThreshold(value: number): string | null {
   if (isNaN(value)) return "Please enter a valid number.";
   if (value < 1) return "Threshold must be at least 1.";
@@ -216,7 +216,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
           </div>
         </div>
 
-        {/* ── Threshold Slider ── */}
+        {/* Threshold Slider */}
         <div style={{ marginBottom: 20, opacity: isEnabled ? 1 : 0.4, transition: "opacity 0.2s" }}>
           <div
             style={{
@@ -315,7 +315,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
           </div>
         </div>
 
-        {/* ── Direction Toggle ── */}
+        {/*  Direction Toggle */}
         <div style={{ marginBottom: 24, opacity: isEnabled ? 1 : 0.4, transition: "opacity 0.2s" }}>
           <p style={{ margin: "0 0 10px", fontSize: 13, color: "#94a3b8", fontWeight: 600 }}>
             TRIGGER WHEN SCORE IS
@@ -345,8 +345,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
             ))}
           </div>
         </div>
-
-        {/* ── API Error ── */}
+        {/* API Error */}
         {apiError && (
           <p
             style={{
@@ -363,8 +362,8 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
           </p>
         )}
 
-        {/* ── Save Button ── */}
-        {/* Alternate Flow 4a: grayed out when invalid */}
+        {/* Save Button */}
+        {/* * */}
         <button
           onClick={handleSave}
           disabled={isSaveDisabled}
@@ -393,8 +392,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
   );
 }
 
-// ─── BELL ICON BUTTON ──────────────────────────────────────────────────────
-// Drop this anywhere — it manages its own modal open/close state
+//BELL ICON BUTTON
 interface AlertBellProps {
   ticker: string;
 }
