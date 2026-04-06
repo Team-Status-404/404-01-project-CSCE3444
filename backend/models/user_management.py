@@ -240,9 +240,9 @@ class User:
 
     def updateProfile(self, new_username: str = None, new_email: str = None) -> Dict[str, Any]:
         """
-        Updates the user's information. Yasas already built the frontend ui for this, so I'll take care of the actuall backend stuff
+        Updates the user's information.
         """
-        # TODO for David:
+        # TODO for Yasas:
         # 1. Connect to the database using get_db_connection().
         # 2. Write an UPDATE query targeting the 'users' table where id = self._userID.
         # 3. You can update the username, the email, or both depending on what the user sends.
@@ -250,4 +250,4 @@ class User:
         # 5. Catch 'UniqueViolation' errors in case they pick an email that is already taken!
         pass
 
-        return {"status": "pending", "message": "David is building this!"}
+        return {"status": "pending", "message": "Yasas is building this!"}
