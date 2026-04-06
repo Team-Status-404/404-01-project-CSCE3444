@@ -1,38 +1,63 @@
-import yfinance as yf
-from flask import Flask, jsonify
-from flask_cors import CORS
+import datetime
+import yfinance as yf 
+from flask import jsonify
+# Requirement FR-05: 5-Minute Cache (In-memory storage) we could choose to do it this way, instead of with the database function
+#stock_cache = {}
 
-app = Flask(__name__)
-CORS(app) # This allows your computer to talk to this API
+def get_stock(ticker):
+    ticker = ticker.upper()
+    # current_time = datetime.datetime.now()
 
-# --- Your Stock Logic ---
-def stock_data(ticker):
+    """
+    # 1. Check Cache for existing data within 5 minutes
+    if ticker in stock_cache:
+        cached_entry = stock_cache[ticker]
+        if (current_time - cached_entry['timestamp']).total_seconds() < 300:
+            return jsonify({
+                "status": "success",
+                "source": "cache",
+                "data": cached_entry['data']
+            })
+    """
+
+    # 2. Fetch Fresh Data (Requirement FR-06)
     try:
-        stock = yf.Ticker(ticker.upper())
-        # Fetch 1 month of data to ensure we have enough for a 5-day average
-        df = stock.history(period="1mo")
+        stock_obj = yf.Ticker(ticker)
+        
+        # Get Info for Full Company Name
+        info = stock_obj.info
+        
+        # Get 1 month of history for moving average calculation
+        hist = stock_obj.history(period="1mo")
 
-        if df.empty:
-            return {"error": "No data found."}, 404
+        if hist.empty:
+            return jsonify({"status": "error", "message": "Ticker not found"}), 404
 
-        # Calculate values
-        name = stock.info.get('shortName', ticker.upper())
-        current_price = df['Close'].iloc[-1]
-        moving_avg_5d = df['Close'].tail(5).mean()
+        # Calculate metrics defined in Class Diagram
+        current_price = hist['Close'].iloc[-1]
+        moving_avg_5d = hist['Close'].tail(5).mean()
 
+        # Cleaned Data Object (No currency, No sector)
+        processed_data = {
+            "ticker": ticker,
+            "companyName": info.get('longName', 'N/A'),
+            "currentPrice": round(float(current_price), 2),
+            "movingAverage5Day": round(float(moving_avg_5d), 2)
+        }
+
+        # 3. Update Cache
+        """
+        stock_cache[ticker] = {
+            "timestamp": current_time,
+            "data": processed_data
+        }
+        """
         return {
-            "ticker": ticker.upper(),
-            "name": name,
-            "current_price": round(float(current_price), 2),
-            "moving_average_5d": round(float(moving_avg_5d), 2),
-            "status": "Success!"
-        }, 200
+            "status": "success",
+            "source": "live_api",
+            "data": processed_data
+        }
 
     except Exception as e:
-        return {"error": str(e)}, 500
-
-
-if __name__ == "__main__":
-    # This starts the server
-    print("\n Starting server... Look for the URL below!")
-    app.run(debug=True, port=5000)
+        return {"status": "error", "message": str(e)}, 500
+    
