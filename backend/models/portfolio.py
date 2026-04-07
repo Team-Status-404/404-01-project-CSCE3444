@@ -68,6 +68,18 @@ class WatchList:
             conn = get_db_connection()
             cur = conn.cursor()
             
+            # Inserts basic information of the ticker into the parent 'stocks' table first. 
+            # We use the ticker as a placeholder for the company_name.
+            # If the stock is already in the database, ON CONFLICT DO NOTHING safely ignores this.
+            cur.execute(
+                """
+                INSERT INTO stocks (ticker, company_name) 
+                VALUES (%s, %s)
+                ON CONFLICT (ticker) DO NOTHING;
+                """,
+                (ticker, ticker)
+            )
+
             cur.execute(
                 "INSERT INTO watchlist (user_id, ticker) VALUES (%s, %s);", 
                 (self._userID, ticker)
@@ -77,9 +89,9 @@ class WatchList:
             cur.close()
             return {"status": "success", "message": f"{ticker} successfully added to watchlist."}
             
-        except psycopg2.errors.ForeignKeyViolation:
+        except psycopg2.errors.ForeignKeyViolation as e:
             if conn: conn.rollback()
-            return {"status": "error", "message": f"Cannot add {ticker}. It must be viewed/saved to the database first."}
+            return {"status": "error", "message": f"Foreign Key Error: {str(e)}"}
         except psycopg2.errors.UniqueViolation:
             if conn: conn.rollback()
             return {"status": "error", "message": f"{ticker} is already in your watchlist."}
