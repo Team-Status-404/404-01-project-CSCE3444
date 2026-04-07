@@ -1,68 +1,38 @@
-import type { PropsWithChildren } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Search, Bell, User } from 'lucide-react'; // Added icons for the top nav
+import { Search, Bell } from 'lucide-react';
 
-type LayoutProps = PropsWithChildren;
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
 
-export default function Layout({ children }: LayoutProps) {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      // This forces the app to go to whatever ticker you typed
+      navigate(`/stock/${query.trim().toUpperCase()}`);
+      setQuery('');
+    }
+  };
+
   return (
-    <div className="app-shell">
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#070f1d', color: 'white' }}>
       <Sidebar />
-      <main className="content-area" style={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
-        
-        {/* --- GLOBAL TOP NAVIGATION BAR --- */}
-        <header style={{ 
-          height: '70px', 
-          borderBottom: '1px solid rgba(148, 163, 184, 0.18)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          padding: '0 30px',
-          flexShrink: 0
-        }}>
-          {/* Search Input */}
-          <div style={{ position: 'relative' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <header style={{ height: '70px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', padding: '0 30px' }}>
+          <form onSubmit={handleSearch} style={{ position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text" 
-              placeholder="Search stocks, news..." 
-              style={{ 
-                padding: '10px 10px 10px 40px', 
-                borderRadius: '20px', 
-                border: '1px solid rgba(148, 163, 184, 0.24)', 
-                backgroundColor: 'rgba(10, 18, 34, 0.4)', 
-                color: 'white', 
-                width: '300px',
-                outline: 'none',
-                fontFamily: 'inherit'
-              }}
+              placeholder="Search ANY ticker..." 
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ padding: '10px 40px', borderRadius: '20px', border: '1px solid #334155', backgroundColor: '#0f172a', color: 'white', width: '300px', outline: 'none' }}
             />
-          </div>
-
-          {/* Notifications & Profile */}
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', color: '#94a3b8' }}>
-            <Bell size={20} style={{ cursor: 'pointer' }} />
-            <div style={{ 
-              width: '32px', 
-              height: '32px', 
-              borderRadius: '50%', 
-              backgroundColor: '#38bdf8', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              color: '#07162f',
-              cursor: 'pointer'
-            }}>
-              <User size={18} />
-            </div>
-          </div>
+          </form>
         </header>
-
-        {/* --- PAGE CONTENT --- */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '30px' }}>
-          {children}
-        </div>
-        
+        <div style={{ flex: 1, overflowY: 'auto', padding: '30px' }}>{children}</div>
       </main>
     </div>
   );

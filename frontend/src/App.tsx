@@ -13,7 +13,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/markets" element={<ProtectedRoute><MarketsPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/stock/nvda" element={<ProtectedRoute><StockDetailPage /></ProtectedRoute>} />
+      <Route path="/stock/:symbol" element={<ProtectedRoute><StockDetailPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
   );
