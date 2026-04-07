@@ -16,7 +16,7 @@
   * **Phone:** 682 246 8060
 
 * **Lance Joseph Trasporto**
-  * **Role:** Developer
+  * **Role:** Repository Owner / Developer
   * **EUID:** lat0242
   * **Email:** LanceJosephTrasporto@my.unt.edu
   * **Phone:** 940 758 2193	
