@@ -38,7 +38,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
   }
 
   // SAVE HANDLER
-  // Connects to: PATCH /api/watchlist/alert
+  // Connects to: POST /api/watchlist/alert
   async function handleSave() {
     // Final validation check before saving
     const error = validateThreshold(threshold);
@@ -56,18 +56,22 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
     setApiError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/watchlist/alert`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({
-          user_id: user.user_id,
-          ticker: ticker,
-          is_enabled: isEnabled,
-        }),
-      });
+  const res = await fetch(`${API_URL}/api/alerts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${user.token}`,
+    },
+    body: JSON.stringify({
+      user_id: user.user_id,
+      ticker: ticker,
+      hype_threshold: threshold,
+      direction: direction,
+    }),
+  });
+
+  const data = await res.json();
+  
 
       const data = await res.json();
 
