@@ -30,7 +30,12 @@ export default function LoginPage() {
         : await login(email, password);
 
       if (result.status === 'success') {
-        navigate('/dashboard');
+        // Intercept new users and send them to onboarding
+        if (isSignUp) {
+          navigate('/onboarding');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(result.message || 'Something went wrong');
       }
