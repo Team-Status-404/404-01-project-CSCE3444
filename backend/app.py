@@ -117,7 +117,30 @@ def toggle_alert():
     
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+@app.route('/api/alerts', methods=['POST'])
+def configure_alert():
+    """Saves a user's hype score alert threshold for a specific ticker."""
+    data = request.json
+    user_id = data.get('user_id')
+    ticker = data.get('ticker')
+    hype_threshold = data.get('hype_threshold')
+    direction = data.get('direction', 'above')
 
+    # Validate inputs
+    if not user_id or not ticker or hype_threshold is None:
+        return jsonify({"status": "error", "message": "Missing user_id, ticker, or hype_threshold"}), 400
+
+    if not isinstance(hype_threshold, int) or not (1 <= hype_threshold <= 99):
+        return jsonify({"status": "error", "message": "hype_threshold must be between 1 and 99"}), 400
+
+    if direction not in ('above', 'below'):
+        return jsonify({"status": "error", "message": "direction must be 'above' or 'below'"}), 400
+
+    alert_manager = Alerts(user_id=user_id, ticker_symbol=ticker)
+    result = alert_manager.configureAlert(hype_threshold, direction)
+
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
 # ==========================================
 # 3. USER & AUTH ROUTES (Lance's Domain)
 # ==========================================
