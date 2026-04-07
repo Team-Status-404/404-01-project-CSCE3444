@@ -161,6 +161,23 @@ export default function OnboardingPage() {
         >
           {isSaving ? 'Saving...' : 'Save & Continue to Dashboard'}
         </button>
+
+        {/* Skip Button */}
+        <button 
+          onClick={() => navigate('/dashboard')}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: 'transparent',
+            color: '#94a3b8',
+            border: 'none',
+            marginTop: '10px',
+            cursor: 'pointer',
+            textDecoration: 'underline'
+          }}
+        >
+          Skip for now
+        </button>
       </div>
     </div>
   );
