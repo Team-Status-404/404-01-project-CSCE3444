@@ -481,9 +481,9 @@ def get_price_data_and_ma(ticker_symbol: str):
         historical_prices = hist['Close'].tolist()
 
         return {
-            "current_price": round(current_price, 2),
-            "ma_5_day": round(ma_5_day, 2),
-            "price_trend_pct": price_trend_pct,
+            "current_price": float(round(current_price, 2)),
+            "ma_5_day": float(round(ma_5_day, 2)),
+            "price_trend_pct": float(price_trend_pct), # Cast to standard float here
             "historical_prices": historical_prices
         }
     except Exception as e:
@@ -494,7 +494,7 @@ def calculate_divergence_flag(price_trend_pct: float, sentiment_trend_pct: float
     """FR-03: Flags if divergence between price trend and sentiment trend is > 20%."""
     divergence = abs(price_trend_pct - sentiment_trend_pct)
     # returns true of divergence is greater than 20 percent
-    return divergence > 0.20
+    return bool(divergence > 0.20)
 
 def get_5_day_sentiment(ticker_symbol: str) -> dict:
     """Fetches the 5-day (stock market week) historical sentiment for the stock from the hype_metrics table."""
