@@ -16,7 +16,7 @@ export default function App() {
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
       <Route path="/markets" element={<ProtectedRoute><MarketsPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/stock/nvda" element={<ProtectedRoute><StockDetailPage /></ProtectedRoute>} />
+      <Route path="/stock/:ticker" element={<ProtectedRoute><StockDetailPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
   );
