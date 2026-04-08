@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from 'react-router-dom';
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
@@ -394,55 +395,48 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
       </div>
     </div>
   );
-}
+//BELL ICON BUTTON
 
 //BELL ICON BUTTON
+
 interface AlertBellProps {
   ticker: string;
 }
 
 export default function AlertBell({ ticker }: AlertBellProps) {
-  const [showModal, setShowModal] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   return (
-    <>
-      {/* Bell Button */}
-      <button
-        onClick={() => setShowModal(true)}
-        title={`Set alert for ${ticker}`}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "10px 18px",
-          borderRadius: 12,
-          border: "1px solid rgba(148, 163, 184, 0.2)",
-          background: "transparent",
-          color: "#94a3b8",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "pointer",
-          transition: "all 0.2s",
-          fontFamily: "inherit",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "#38bdf8";
-          e.currentTarget.style.color = "#38bdf8";
-          e.currentTarget.style.background = "rgba(56,189,248,0.08)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "rgba(148,163,184,0.2)";
-          e.currentTarget.style.color = "#94a3b8";
-          e.currentTarget.style.background = "transparent";
-        }}
-      >
-        🔔 Set Alert
-      </button>
-
-      {/* Modal */}
-      {showModal && (
-        <AlertModal ticker={ticker} onClose={() => setShowModal(false)} />
-      )}
-    </>
+    <button
+      onClick={() => navigate('/alerts')}
+      title={`Set alert for ${ticker}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "10px 18px",
+        borderRadius: 12,
+        border: "1px solid rgba(148, 163, 184, 0.2)",
+        background: "transparent",
+        color: "#94a3b8",
+        fontSize: 14,
+        fontWeight: 600,
+        cursor: "pointer",
+        transition: "all 0.2s",
+        fontFamily: "inherit",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "#38bdf8";
+        e.currentTarget.style.color = "#38bdf8";
+        e.currentTarget.style.background = "rgba(56,189,248,0.08)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "rgba(148,163,184,0.2)";
+        e.currentTarget.style.color = "#94a3b8";
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      🔔 Set Alert
+    </button>
   );
 }

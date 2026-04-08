@@ -5,10 +5,13 @@ import StockDetailPage from './pages/StockDetailPage';
 import MarketsPage from './pages/MarketsPage';
 import ProfilePage from './pages/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AlertsPage from './pages/AlertsPage';
 
 export default function App() {
   return (
     <Routes>
+      
+      <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/markets" element={<ProtectedRoute><MarketsPage /></ProtectedRoute>} />

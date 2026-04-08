@@ -8,7 +8,7 @@ load_dotenv()
 # We use the direct Postgres Connection String provided by Supabase
 # Add this to your .env file as DATABASE_URL=postgresql://postgres...
 def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
 
 class WatchList:
     def __init__(self, user_id: int):
@@ -129,3 +129,34 @@ class Alerts:
         finally:
             if conn is not None:
                 conn.close()
+
+
+    def configureAlert(self, hype_threshold: int, direction: str) -> Dict[str, Any]:
+        """Saves the user's alert threshold and direction to the watchlist table."""
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            cur.execute(
+                """UPDATE watchlist 
+                   SET alert_enabled = TRUE, 
+                       hype_threshold = %s, 
+                       direction = %s 
+                   WHERE user_id = %s AND ticker = %s;""",
+                (hype_threshold, direction, self._userID, self._tickerSymbol)
+            )
+
+            if cur.rowcount == 0:
+                return {"status": "error", "message": "Stock not found in watchlist. Add it first."}
+
+            conn.commit()
+            cur.close()
+            return {"status": "success", "message": f"Alert configured for {self._tickerSymbol}."}
+
+        except Exception as e:
+            if conn: conn.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            if conn is not None:
+                conn.close()            
