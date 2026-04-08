@@ -4,9 +4,10 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import yfinance as yf
+import threading
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer
+from models.market_intelligence import Stock, SentimentAnalyzer, get_db_connection
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 
@@ -14,7 +15,7 @@ from models.user_management import User, token_required
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -34,7 +35,7 @@ def home():
 # ==========================================
 
 @app.route('/api/stock/<ticker>', methods=['GET'])
-def get_stock_data(ticker): 
+def get_stock_data(ticker):
     """Fetch stock price, name, and moving averages using the Stock object."""
     try:
         target_stock = Stock(ticker_symbol=ticker)
@@ -45,11 +46,14 @@ def get_stock_data(ticker):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 @app.route('/api/stocks/search', methods=['GET'])
 def search_stocks():
     """
-    Live ticker search using yfinance.
-    Returns up to 10 matching tickers with symbol and company name.
+    Search for tickers with cache-aside logic:
+    1. Check Supabase stocks table first for matching tickers
+    2. If cache miss, query yfinance API
+    3. Asynchronously write new results back to Supabase
     Example: /api/stocks/search?query=apple
     """
     query = request.args.get('query', '').strip()
@@ -57,16 +61,44 @@ def search_stocks():
     if not query or len(query) < 1:
         return jsonify([]), 200
 
+    query_upper = query.upper()
+
+    # ── STEP 1: CHECK SUPABASE CACHE FIRST ──
     try:
-        # yfinance search returns matching tickers
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT ticker, company_name FROM stocks
+            WHERE ticker ILIKE %s OR company_name ILIKE %s
+            ORDER BY ticker ASC
+            LIMIT 10
+            """,
+            (f"{query_upper}%", f"%{query}%")
+        )
+        cached_rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if cached_rows:
+            # Return cached results from Supabase
+            return jsonify([
+                {"symbol": row[0], "name": row[1] or row[0], "type": "EQUITY"}
+                for row in cached_rows
+            ]), 200
+
+    except Exception as e:
+        print(f"DEBUG: Search cache read error: {e}")
+
+    # ── STEP 2: CACHE MISS — QUERY YFINANCE ──
+    try:
         results = yf.Search(query, max_results=10)
-        quotes = results.quotes  # list of dicts with 'symbol', 'longname', 'shortname' etc.
+        quotes = results.quotes
 
         formatted = []
         for q in quotes:
             symbol = q.get('symbol', '')
             name = q.get('longname') or q.get('shortname') or symbol
-            # Only include stocks and ETFs, skip futures/crypto/forex
             quote_type = q.get('quoteType', '')
             if quote_type in ('EQUITY', 'ETF', 'MUTUALFUND') and symbol:
                 formatted.append({
@@ -75,6 +107,32 @@ def search_stocks():
                     'type': quote_type
                 })
 
+        # ── STEP 3: ASYNCHRONOUSLY WRITE NEW RESULTS TO SUPABASE ──
+        # Uses a background thread so the API response is not delayed
+        if formatted:
+            def write_to_db(results_to_save):
+                try:
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    for item in results_to_save:
+                        cur.execute(
+                            """
+                            INSERT INTO stocks (ticker, company_name)
+                            VALUES (%s, %s)
+                            ON CONFLICT (ticker) DO NOTHING
+                            """,
+                            (item['symbol'], item['name'])
+                        )
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                except Exception as e:
+                    print(f"DEBUG: Search cache write error: {e}")
+
+            thread = threading.Thread(target=write_to_db, args=(formatted,))
+            thread.daemon = True
+            thread.start()
+
         return jsonify(formatted), 200
 
     except Exception as e:
@@ -82,7 +140,7 @@ def search_stocks():
         return jsonify([]), 200
 
 
-@app.route('/api/sentiment/<ticker>', methods=['GET']) 
+@app.route('/api/sentiment/<ticker>', methods=['GET'])
 def get_stock_sentiment(ticker):
     """Returns the 0-100 Hype Score and Sentiment Tag."""
     try:
@@ -96,12 +154,12 @@ def get_stock_sentiment(ticker):
 # ==========================================
 
 @app.route('/api/watchlist/add', methods=['POST'])
-def add_to_watchlist(): 
+def add_to_watchlist():
     """Adds a ticker to a user's watchlist, enforcing the 5-stock limit."""
     data = request.json
     user_id = data.get('user_id')
     ticker = data.get('ticker')
-    
+
     if not user_id or not ticker:
         return jsonify({"status": "error", "message": "Missing user_id or ticker"}), 400
 
@@ -116,7 +174,7 @@ def remove_from_watchlist():
     data = request.json
     user_id = data.get('user_id')
     ticker = data.get('ticker')
-    
+
     user_watchlist = WatchList(user_id=user_id)
     result = user_watchlist.removeTicker(ticker)
     status_code = 200 if result["status"] == "success" else 400
@@ -129,7 +187,7 @@ def toggle_alert():
     user_id = data.get('user_id')
     ticker = data.get('ticker')
     is_enabled = data.get('is_enabled')
-    
+
     alert_manager = Alerts(user_id=user_id, ticker_symbol=ticker)
     result = alert_manager.toggleAlert(is_enabled)
     status_code = 200 if result["status"] == "success" else 400
