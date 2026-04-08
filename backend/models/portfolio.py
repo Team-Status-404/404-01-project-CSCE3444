@@ -1,14 +1,6 @@
-import os
 import psycopg2
 from typing import Dict, Any
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# We use the direct Postgres Connection String provided by Supabase
-# Add this to your .env file as DATABASE_URL=postgresql://postgres...
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+from models.user_management import get_db_connection
 
 class WatchList:
     def __init__(self, user_id: int):
