@@ -26,8 +26,6 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ KEY FIX: [ticker] in the dependency array means this re-runs
-  // every time the URL changes (AAPL → TSLA → GOOG etc.)
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -44,25 +42,7 @@ export default function StockDetailPage() {
       })
       .catch(() => setError('Network error — is your Flask server running on port 5000?'))
       .finally(() => setLoading(false));
-  }, [ticker]); // <-- reruns whenever ticker changes
-
-  const fmt = (n: number | null) =>
-    n != null ? `$${n.toFixed(2)}` : 'N/A';
-
-  const fmtMarketCap = (v: number | null) => {
-    if (!v) return 'N/A';
-    if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
-    if (v >= 1e9)  return `$${(v / 1e9).toFixed(2)}B`;
-    if (v >= 1e6)  return `$${(v / 1e6).toFixed(2)}M`;
-    return `$${v.toLocaleString()}`;
-  };
-
-  const fmtVolume = (v: number | null) => {
-    if (!v) return 'N/A';
-    if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
-    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
-    return v.toString();
-  };
+  }, [ticker]);
 
   return (
     <Layout>
@@ -116,7 +96,6 @@ export default function StockDetailPage() {
                     </div>
                   ) : (
                     <>
-                      {/* ✅ REAL PRICE for whatever ticker is in the URL */}
                       <div style={{ fontSize: '3rem', fontWeight: 'bold' }}>
                         {stockData?.currentPrice != null
                           ? `$${stockData.currentPrice.toFixed(2)}`
@@ -172,75 +151,12 @@ export default function StockDetailPage() {
                 </div>
               </div>
             </div>
-
-            {/* ── METRICS ROW ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-
-              <div style={{ background: '#0f172a', padding: '20px', borderRadius: '15px', border: '1px solid #1e293b' }}>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 8px 0' }}>52-Week Range</p>
-                {loading ? <p style={{ color: '#475569', margin: 0 }}>Loading…</p> : (
-                  <>
-                    <h3 style={{ fontSize: '1rem', margin: '0 0 4px 0' }}>
-                      {fmt(stockData?.fiftyTwoWeekLow ?? null)} – {fmt(stockData?.fiftyTwoWeekHigh ?? null)}
-                    </h3>
-                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>Low – High</p>
-                  </>
-                )}
-              </div>
-
-              <div style={{ background: '#0f172a', padding: '20px', borderRadius: '15px', border: '1px solid #1e293b' }}>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 8px 0' }}>Volume</p>
-                {loading ? <p style={{ color: '#475569', margin: 0 }}>Loading…</p> : (
-                  <>
-                    <h3 style={{ fontSize: '1.4rem', margin: '0 0 4px 0' }}>{fmtVolume(stockData?.volume ?? null)}</h3>
-                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>Avg. Daily</p>
-                  </>
-                )}
-              </div>
-
-              <div style={{ background: '#0f172a', padding: '20px', borderRadius: '15px', border: '1px solid #1e293b' }}>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 8px 0' }}>Market Cap</p>
-                {loading ? <p style={{ color: '#475569', margin: 0 }}>Loading…</p> : (
-                  <>
-                    <h3 style={{ fontSize: '1.4rem', margin: '0 0 4px 0' }}>{fmtMarketCap(stockData?.marketCap ?? null)}</h3>
-                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>Total Value</p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ── VOLATILITY BAR ── */}
-            {!loading && stockData?.volatility != null && (
-              <div style={{
-                background: '#0f172a', padding: '20px', borderRadius: '15px',
-                border: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '20px'
-              }}>
-                <div style={{ minWidth: '140px' }}>
-                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 4px 0' }}>5-Day Volatility</p>
-                  <h3 style={{ fontSize: '1.6rem', margin: 0, color: stockData.volatility > 3 ? '#f87171' : '#10b981' }}>
-                    {stockData.volatility.toFixed(2)}%
-                  </h3>
-                </div>
-                <div style={{ flex: 1, height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${Math.min(stockData.volatility * 10, 100)}%`,
-                    background: stockData.volatility > 3 ? '#f87171' : '#10b981',
-                    borderRadius: '4px',
-                    transition: 'width 0.6s ease',
-                  }} />
-                </div>
-                <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0, minWidth: '80px', textAlign: 'right' }}>
-                  {stockData.volatility > 3 ? '⚠️ High' : '✅ Normal'}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* ── RIGHT COLUMN ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-            {/* HypeMeter — already works, passes ticker as prop */}
+            {/* HypeMeter */}
             <div style={{ background: '#0f172a', padding: '25px', borderRadius: '20px', border: '1px solid #1e293b' }}>
               <h3 style={{ color: '#94a3b8', fontSize: '1.1rem', margin: '0 0 20px 0' }}>AI Hype Meter</h3>
               <HypeMeter symbol={ticker} />
