@@ -1,4 +1,5 @@
 import os
+from alert_scheduler import start_scheduler
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -24,7 +25,8 @@ CORS(app)
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
-
+# Start the background alert checker
+scheduler = start_scheduler(sentiment_engine)
 
 @app.route('/')
 def home():
@@ -61,16 +63,12 @@ def get_stock_sentiment(ticker):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# 2. PORTFOLIO ROUTES
+# 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
 @app.route('/api/watchlist/add', methods=['POST'])
 def add_to_watchlist(): 
-    """
-        this function is fatter than the previous functions because our python classes 
-        don't know what http or json is, so the route has to handle "upacking" the web request
-        before it can hand it over to the variables
-    """
+   
     """Adds a ticker to a user's watchlist, enforcing the 5-stock limit."""
     data = request.json
     user_id = data.get('user_id')
@@ -88,11 +86,6 @@ def add_to_watchlist():
 
 @app.route('/api/watchlist/remove', methods=['DELETE'])
 def remove_from_watchlist():
-    """
-        this function is fatter than the previous functions because our python classes 
-        don't know what http or json is, so the route has to handle "upacking" the web request
-        before it can hand it over to the variables
-    """
     """Removes a ticker from a user's watchlist."""
     data = request.json
     user_id = data.get('user_id')
