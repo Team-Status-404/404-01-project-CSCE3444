@@ -1,5 +1,4 @@
 import os
-from alert_scheduler import start_scheduler
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -9,6 +8,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from models.market_intelligence import Stock, SentimentAnalyzer
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
+from models.alert_scheduler import start_scheduler
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
@@ -110,6 +110,7 @@ def toggle_alert():
     
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+
 @app.route('/api/alerts', methods=['POST'])
 def configure_alert():
     """Saves a user's hype score alert threshold for a specific ticker."""
