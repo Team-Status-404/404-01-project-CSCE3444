@@ -9,51 +9,63 @@ interface TickerEntry {
   name: string;
 }
 
-const ALL_TICKERS: TickerEntry[] = tickerData as TickerEntry[];
+const ALL_TICKERS: TickerEntry[] = (tickerData as TickerEntry[]).sort((a, b) =>
+  a.symbol.localeCompare(b.symbol)
+);
 
 export default function Layout({ children }: { children: React.ReactNode }) {
 
-  // ── LEFT: plain search bar (same as yesterday) ──
-  const [query, setQuery] = useState('');
+  // ── LEFT: plain search bar ──
+  const [leftQuery, setLeftQuery] = useState('');
 
-  // ── RIGHT: radio mode ──
+  // ── RIGHT: mode ──
   const [mode, setMode] = useState<'search' | 'manual'>('search');
-  const [radioQuery, setRadioQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<TickerEntry[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [manualQuery, setManualQuery] = useState('');
 
   const navigate = useNavigate();
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // LEFT search — plain Enter to navigate
+  // LEFT plain Enter
   const handleLeftSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      navigate(`/stock/${query.trim().toUpperCase()}`);
-      setQuery('');
+    if (leftQuery.trim()) {
+      navigate(`/stock/${leftQuery.trim().toUpperCase()}`);
+      setLeftQuery('');
     }
   };
 
-  // RIGHT: filter from local JSON instantly as user types
-  const handleRadioInput = (value: string) => {
-    setRadioQuery(value);
+  // Filter tickers as user types inside dropdown
+  const handleSearchInput = (value: string) => {
+    setSearchQuery(value);
     if (!value.trim()) {
+      setResults(ALL_TICKERS);
+    } else {
+      const q = value.trim().toUpperCase();
+      setResults(ALL_TICKERS.filter(t => t.symbol.startsWith(q)));
+    }
+  };
+
+  // Click Search US Stocks radio
+  const handleModeChange = (newMode: 'search' | 'manual') => {
+    setMode(newMode);
+    setSearchQuery('');
+    if (newMode === 'search') {
+      setResults(ALL_TICKERS);
+      setShowDropdown(true);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    } else {
       setResults([]);
       setShowDropdown(false);
-      return;
     }
-    const q = value.trim().toUpperCase();
-    // Show ALL tickers that start with the query (alphabetical)
-    const filtered = ALL_TICKERS.filter(t => t.symbol.startsWith(q));
-    setResults(filtered);
-    setShowDropdown(true);
   };
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      if (rightRef.current && !rightRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -61,27 +73,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleModeChange = (newMode: 'search' | 'manual') => {
-    setMode(newMode);
-    setRadioQuery('');
-    setManualQuery('');
-    setResults([]);
-    setShowDropdown(false);
-  };
-
   const handleSelect = (symbol: string) => {
-    setRadioQuery('');
-    setResults([]);
+    setSearchQuery('');
     setShowDropdown(false);
     navigate(`/stock/${symbol}`);
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualQuery.trim()) {
-      navigate(`/stock/${manualQuery.trim().toUpperCase()}`);
-      setManualQuery('');
-    }
   };
 
   return (
@@ -104,156 +99,131 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <input
               type="text"
               placeholder="Search ANY ticker..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={leftQuery}
+              onChange={(e) => setLeftQuery(e.target.value)}
               style={{
                 padding: '9px 16px 9px 38px',
                 borderRadius: '20px',
                 border: '1px solid #334155',
                 backgroundColor: '#0f172a',
                 color: 'white',
-                width: '280px',
+                width: '260px',
                 outline: 'none',
                 fontSize: '0.85rem',
               }}
             />
           </form>
 
-          {/* ── RIGHT: radio buttons + input ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* ── RIGHT: just two radio buttons, dropdown appears below ── */}
+          <div ref={rightRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px' }}>
 
             {/* Radio: Search US Stocks */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', color: mode === 'search' ? 'white' : '#64748b' }}>
-              <div
-                onClick={() => handleModeChange('search')}
-                style={{
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  border: `2px solid ${mode === 'search' ? '#ef4444' : '#475569'}`,
-                  background: mode === 'search' ? '#ef4444' : 'transparent',
-                  cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                }}
-              />
-              <span onClick={() => handleModeChange('search')}>Search US Stocks</span>
+            <label
+              onClick={() => handleModeChange('search')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', color: mode === 'search' ? 'white' : '#64748b' }}
+            >
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%',
+                border: `2px solid ${mode === 'search' ? '#ef4444' : '#475569'}`,
+                background: mode === 'search' ? '#ef4444' : 'transparent',
+                transition: 'all 0.2s', flexShrink: 0,
+              }} />
+              Search US Stocks
             </label>
 
             {/* Radio: Manual Entry */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', color: mode === 'manual' ? 'white' : '#64748b' }}>
-              <div
-                onClick={() => handleModeChange('manual')}
-                style={{
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  border: `2px solid ${mode === 'manual' ? '#ef4444' : '#475569'}`,
-                  background: mode === 'manual' ? '#ef4444' : 'transparent',
-                  cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                }}
-              />
-              <span onClick={() => handleModeChange('manual')}>Manual Entry</span>
+            <label
+              onClick={() => handleModeChange('manual')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', color: mode === 'manual' ? 'white' : '#64748b' }}
+            >
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%',
+                border: `2px solid ${mode === 'manual' ? '#ef4444' : '#475569'}`,
+                background: mode === 'manual' ? '#ef4444' : 'transparent',
+                transition: 'all 0.2s', flexShrink: 0,
+              }} />
+              Manual Entry
             </label>
 
-            {/* Divider */}
-            <div style={{ width: '1px', height: '28px', background: '#1e293b' }} />
-
-            {/* Input area */}
-            {mode === 'search' ? (
-              <div ref={wrapperRef} style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
-                <input
-                  type="text"
-                  placeholder="Type A, AA, AAPL..."
-                  value={radioQuery}
-                  onChange={(e) => handleRadioInput(e.target.value)}
-                  onFocus={() => results.length > 0 && setShowDropdown(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && radioQuery.trim()) handleSelect(radioQuery.trim().toUpperCase());
-                    if (e.key === 'Escape') setShowDropdown(false);
-                  }}
-                  style={{
-                    padding: '9px 16px 9px 36px',
-                    borderRadius: '20px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#0f172a',
-                    color: 'white',
-                    width: '220px',
-                    outline: 'none',
-                    fontSize: '0.85rem',
-                  }}
-                />
-
-                {/* Scrollable dropdown — shows ALL matching tickers */}
-                {showDropdown && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                    width: '400px',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '12px',
-                    zIndex: 1000,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                  }}>
-                    {results.length > 0 ? (
-                      <>
-                        {/* Result count */}
-                        <div style={{ padding: '8px 16px', borderBottom: '1px solid #1e293b', color: '#475569', fontSize: '0.75rem' }}>
-                          {results.length} ticker{results.length !== 1 ? 's' : ''} found
-                        </div>
-                        {results.map((ticker, i) => (
-                          <div
-                            key={ticker.symbol}
-                            onClick={() => handleSelect(ticker.symbol)}
-                            style={{
-                              display: 'flex', justifyContent: 'space-between',
-                              alignItems: 'center', padding: '10px 16px', cursor: 'pointer',
-                              borderBottom: i < results.length - 1 ? '1px solid #1e293b' : 'none',
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#1e293b')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <span style={{
-                                background: '#1e3a5f', color: '#38bdf8',
-                                padding: '2px 8px', borderRadius: '6px',
-                                fontSize: '0.78rem', fontWeight: '700',
-                                minWidth: '50px', textAlign: 'center',
-                              }}>
-                                {ticker.symbol}
-                              </span>
-                              <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>{ticker.name}</span>
-                            </div>
-                            <span style={{ color: '#475569', fontSize: '0.75rem' }}>→</span>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <div style={{ padding: '16px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>
-                        No matching tickers found.
-                      </div>
-                    )}
+            {/* Dropdown — appears below the radio buttons when Search US Stocks is selected */}
+            {showDropdown && mode === 'search' && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 12px)',
+                right: 0,
+                width: '420px',
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: '10px',
+                zIndex: 1000,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                overflow: 'hidden',
+              }}>
+                {/* Search input inside dropdown */}
+                <div style={{ padding: '10px', borderBottom: '1px solid #334155', background: '#1e293b' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Type to filter tickers..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && searchQuery.trim()) handleSelect(searchQuery.trim().toUpperCase());
+                        if (e.key === 'Escape') setShowDropdown(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 30px',
+                        background: '#0f172a',
+                        border: '1px solid #334155',
+                        borderRadius: '6px',
+                        color: 'white',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
                   </div>
-                )}
+                </div>
+
+                {/* Count label */}
+                <div style={{ padding: '5px 12px', color: '#475569', fontSize: '0.72rem', borderBottom: '1px solid #334155' }}>
+                  {results.length} ticker{results.length !== 1 ? 's' : ''} {searchQuery.trim() ? 'found' : '— A to Z'}
+                </div>
+
+                {/* Scrollable ticker list */}
+                <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                  {results.length > 0 ? results.map((ticker, i) => (
+                    <div
+                      key={ticker.symbol}
+                      onClick={() => handleSelect(ticker.symbol)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '9px 12px', cursor: 'pointer',
+                        borderBottom: i < results.length - 1 ? '1px solid #2d3f55' : 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#0f172a')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <span style={{
+                        background: '#1e3a5f', color: '#38bdf8',
+                        padding: '2px 8px', borderRadius: '4px',
+                        fontSize: '0.76rem', fontWeight: '700',
+                        minWidth: '56px', textAlign: 'center', flexShrink: 0,
+                      }}>
+                        {ticker.symbol}
+                      </span>
+                      <span style={{ color: '#94a3b8', fontSize: '0.83rem' }}>{ticker.name}</span>
+                    </div>
+                  )) : (
+                    <div style={{ padding: '16px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>
+                      No matching tickers found.
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              // Manual Entry — no dropdown
-              <form onSubmit={handleManualSubmit}>
-                <input
-                  type="text"
-                  placeholder="e.g. AAPL then press Enter..."
-                  value={manualQuery}
-                  onChange={(e) => setManualQuery(e.target.value.toUpperCase())}
-                  style={{
-                    padding: '9px 16px',
-                    borderRadius: '20px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#0f172a',
-                    color: 'white',
-                    width: '220px',
-                    outline: 'none',
-                    fontSize: '0.85rem',
-                    letterSpacing: '0.05em',
-                  }}
-                />
-              </form>
             )}
           </div>
         </header>
