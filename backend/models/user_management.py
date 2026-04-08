@@ -188,14 +188,22 @@ class User:
                 # if exists, log in
                 user_id, username = row
             else:
-                # if new user, auto register
+                # if new user, auto register — ensure the username is unique
                 placeholder_hash = bcrypt.hashpw(os.urandom(32), bcrypt.gensalt()).decode("utf-8")
+                base_name = google_name
+                username = base_name
+                suffix = 1
+                while True:
+                    cur.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+                    if cur.fetchone() is None:
+                        break
+                    username = f"{base_name}{suffix}"
+                    suffix += 1
                 cur.execute(
                     "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id",
-                    (google_name, google_email, placeholder_hash),
+                    (username, google_email, placeholder_hash),
                 )
                 user_id = cur.fetchone()[0]
-                username = google_name
                 conn.commit()
 
             cur.close()
@@ -206,6 +214,7 @@ class User:
                 "username": username,
                 "email": google_email,
                 "token": token,
+                "is_oauth": True,
             }
         except Exception as e:
             if conn:
@@ -221,19 +230,27 @@ class User:
 
 
     def delete_account(self) -> Dict[str, Any]:
-        """Deletes the user from the database entirely (ON DELETE CASCADE handles watchlist)."""
+        """Deletes the user from the database using user_id (ON DELETE CASCADE applies)."""
         conn = None
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+
             cur.execute("DELETE FROM users WHERE id = %s", (self._userID,))
+
+            if cur.rowcount == 0:
+                return {"status": "error", "message": "No user found"}
+
             conn.commit()
             cur.close()
+
             return {"status": "success", "message": "Account deleted"}
+
         except Exception as e:
             if conn:
                 conn.rollback()
             return {"status": "error", "message": str(e)}
+
         finally:
             if conn:
                 conn.close()
