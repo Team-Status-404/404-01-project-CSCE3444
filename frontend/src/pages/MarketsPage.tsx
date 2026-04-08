@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
+
+const API_BASE = 'http://localhost:5000';
 
 const mockChartData = [
   { time: '9:30 AM', SP500: 5050 },
@@ -11,14 +14,46 @@ const mockChartData = [
   { time: '4:00 PM', SP500: 5104 },
 ];
 
-const trendingStocks = [
-  { ticker: 'NVDA', name: 'NVIDIA Corp', price: '$924.79', change: '+2.48%', isUp: true },
-  { ticker: 'SMCI', name: 'Super Micro', price: '$1,024.10', change: '+32.8%', isUp: true },
-  { ticker: 'ARM', name: 'ARM Holdings', price: '$129.43', change: '+4.1%', isUp: true },
-  { ticker: 'PLTR', name: 'Palantir', price: '$24.50', change: '+1.2%', isUp: true }
+const TRENDING_TICKERS = [
+  { ticker: 'NVDA', name: 'NVIDIA Corp' },
+  { ticker: 'SMCI', name: 'Super Micro' },
+  { ticker: 'ARM',  name: 'ARM Holdings' },
+  { ticker: 'PLTR', name: 'Palantir' },
 ];
 
+interface StockRow {
+  ticker: string;
+  name: string;
+  price: string;
+  loading: boolean;
+}
+
 export default function MarketsPage() {
+  const [stocks, setStocks] = useState<StockRow[]>(
+    TRENDING_TICKERS.map((s) => ({ ...s, price: '—', loading: true }))
+  );
+
+  useEffect(() => {
+    TRENDING_TICKERS.forEach((s, idx) => {
+      fetch(`${API_BASE}/api/stock/${s.ticker}`)
+        .then((res) => res.json())
+        .then((result) => {
+          const price =
+            result.status === 'success' && result.data.currentPrice != null
+              ? `$${result.data.currentPrice.toFixed(2)}`
+              : 'N/A';
+          setStocks((prev) =>
+            prev.map((row, i) => (i === idx ? { ...row, price, loading: false } : row))
+          );
+        })
+        .catch(() =>
+          setStocks((prev) =>
+            prev.map((row, i) => (i === idx ? { ...row, price: 'Error', loading: false } : row))
+          )
+        );
+    });
+  }, []);
+
   return (
     <Layout>
       <TopBar
@@ -27,8 +62,8 @@ export default function MarketsPage() {
       />
 
       <section style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', padding: '0 24px' }}>
-        
-        {/* LEFT COLUMN: Main Index Chart */}
+
+        {/* LEFT: S&P 500 Chart */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <article className="card hero-card" style={{ padding: '24px', height: '450px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -44,8 +79,8 @@ export default function MarketsPage() {
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               {['1D', '1W', '1M', '3M', '1Y', '5Y'].map((tf) => (
-                <button 
-                  key={tf} 
+                <button
+                  key={tf}
                   style={{
                     background: tf === '1D' ? '#38bdf8' : 'transparent',
                     color: tf === '1D' ? '#fff' : '#94a3b8',
@@ -53,7 +88,7 @@ export default function MarketsPage() {
                     padding: '6px 14px',
                     borderRadius: '8px',
                     cursor: 'pointer',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
                   }}
                 >
                   {tf}
@@ -75,27 +110,27 @@ export default function MarketsPage() {
           </article>
         </div>
 
-        {/* RIGHT COLUMN: Clickable Trending Stocks */}
+        {/* RIGHT: Trending Stocks */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <article className="card" style={{ padding: '24px' }}>
             <h3 style={{ margin: '0 0 20px 0' }}>Trending Stocks</h3>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {trendingStocks.map((stock) => (
-                <Link 
-                  key={stock.ticker} 
-                  to={`/stock/nvda`} // Routes the user to the Detail Page when clicked
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '16px', 
-                    background: 'rgba(148, 163, 184, 0.05)', 
+              {stocks.map((stock) => (
+                <Link
+                  key={stock.ticker}
+                  to={`/stock/${stock.ticker}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '16px',
+                    background: 'rgba(148, 163, 184, 0.05)',
                     borderRadius: '12px',
                     textDecoration: 'none',
                     color: 'inherit',
                     border: '1px solid #1e293b',
-                    transition: 'border 0.2s, background 0.2s'
+                    transition: 'border 0.2s, background 0.2s',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.border = '1px solid #38bdf8';
@@ -111,17 +146,16 @@ export default function MarketsPage() {
                     <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>{stock.name}</span>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <strong style={{ display: 'block', fontSize: '1.1rem' }}>{stock.price}</strong>
-                    <span className={stock.isUp ? 'positive-text' : 'negative-text'} style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
-                      {stock.change}
-                    </span>
+                    <strong style={{ display: 'block', fontSize: '1.1rem' }}>
+                      {stock.loading ? 'Loading…' : stock.price}
+                    </strong>
                   </div>
                 </Link>
               ))}
             </div>
           </article>
         </div>
-        
+
       </section>
     </Layout>
   );
