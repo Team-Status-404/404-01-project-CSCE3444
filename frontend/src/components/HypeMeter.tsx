@@ -1,221 +1,241 @@
 import React, { useState, useEffect } from "react";
 
-interface HypeMeterProps {
-  symbol: string;
+// ─── TYPESCRIPT DEFINITIONS ────────────────────────────────────────────────
+interface HypeData {
+  ticker: string;
+  hypeScore: number;
+  sentiment: string;
+  headline_count: number;
+  cached: boolean;
 }
 
-export default function HypeMeter({ symbol }: HypeMeterProps) {
-  const [score, setScore] = useState<number>(0);
-  const [signals, setSignals] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
+interface ColorConfig {
+  main: string;
+  glow: string;
+  label: string;
+}
 
-  // Alert modal state
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertDirection, setAlertDirection] = useState<'above' | 'below'>('above');
-  const [alertThreshold, setAlertThreshold] = useState(80);
+interface Alert {
+  ticker: string;
+  direction: "above" | "below";
+  threshold: number;
+}
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`http://localhost:5000/api/sentiment/${symbol}`);
-        const data = await res.json();
-        setScore(data.hype_score || 50);
-        setSignals((data.metrics?.social_volume || 0) + (data.metrics?.news_volume || 0));
-      } catch {
-        setScore(50);
-        setSignals(0);
-      } finally {
-        setLoading(false);
-      }
+// ─── LIVE FLASK BACKEND ────────────────────────────────────────────────────
+async function fetchHypeScore(ticker: string): Promise<HypeData> {
+  try {
+    const response = await fetch(`http://localhost:5000/api/sentiment/${ticker}`);
+    if (!response.ok) throw new Error('Network response was not ok');
+    
+    const data = await response.json();
+    
+    return {
+      ticker: data.ticker,
+      hypeScore: data.hype_score,
+      sentiment: data.tag,
+      headline_count: data.metrics.news_volume + data.metrics.social_volume,
+      cached: false,
     };
-    loadData();
-  }, [symbol]);
+  } catch (err) {
+    console.error("Error fetching live data:", err);
+    // Fallback data if Flask is offline, so the UI doesn't crash
+    return {
+      ticker: ticker.toUpperCase(),
+      hypeScore: 50,
+      sentiment: "Neutral",
+      headline_count: 0,
+      cached: false,
+    };
+  }
+}
 
-  const color = score > 70 ? '#FF4D6D' : score > 40 ? '#FFD166' : '#00E5A0';
-  const label = score > 70 ? 'HOT' : score > 40 ? 'WARM' : 'COOL';
-  const sentiment = score > 65 ? 'Positive' : score <= 35 ? 'Negative' : 'Neutral';
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function scoreToColor(score: number): ColorConfig {
+  if (score < 33) return { main: "#00E5A0", glow: "rgba(0,229,160,0.4)", label: "COOL" };
+  if (score < 66) return { main: "#FFD166", glow: "rgba(255,209,102,0.4)", label: "WARM" };
+  return { main: "#FF4D6D", glow: "rgba(255,77,109,0.45)", label: "HOT" };
+}
 
-  const handleSaveAlert = () => {
-    // Wire up to your /api/watchlist/alert endpoint if needed
-    console.log(`Alert set for ${symbol}: ${alertDirection} ${alertThreshold}`);
-    setShowAlert(false);
-  };
+function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+// ─── ALERT PANEL COMPONENT ─────────────────────────────────────────────────
+interface AlertPanelProps {
+  ticker: string;
+  onClose: () => void;
+  onSave: (alert: Alert) => void;
+}
+
+function AlertPanel({ ticker, onClose, onSave }: AlertPanelProps) {
+  const [direction, setDirection] = useState<"above" | "below">("above");
+  const [threshold, setThreshold] = useState<number>(80);
 
   return (
-    <div style={{ position: 'relative' }}>
-
-      {/* Top row: ticker dot + name + Alert button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
-          <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>{symbol}</span>
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(10,14,23,0.9)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 10 }}>
+      <div style={{ background: "#1a2236", padding: 20, borderRadius: 12, width: "80%", border: "1px solid #2a3441", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+        <h4 style={{ margin: "0 0 15px 0", color: "#fff" }}>Set Alert for {ticker}</h4>
+        
+        <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
+          <button onClick={() => setDirection("above")} style={{ flex: 1, padding: "8px", background: direction === "above" ? "#38bdf8" : "#2a3441", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>Above</button>
+          <button onClick={() => setDirection("below")} style={{ flex: 1, padding: "8px", background: direction === "below" ? "#38bdf8" : "#2a3441", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>Below</button>
         </div>
-        <button
-          onClick={() => setShowAlert(true)}
-          style={{
-            background: 'transparent',
-            border: '1px solid #334155',
-            color: '#94a3b8',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            fontSize: '0.78rem',
-            cursor: 'pointer',
-          }}
-        >
+        
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", color: "#8892a0", fontSize: 12, marginBottom: 5 }}>Threshold Score (0-100)</label>
+          <input type="range" min="0" max="100" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} style={{ width: "100%" }} />
+          <div style={{ textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: 5 }}>{threshold}</div>
+        </div>
+        
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "10px", background: "transparent", color: "#8892a0", border: "1px solid #3a4556", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
+          <button onClick={() => { onSave({ ticker, direction, threshold }); onClose(); }} style={{ flex: 1, padding: "10px", background: "#38bdf8", color: "#000", fontWeight: "bold", border: "none", borderRadius: 6, cursor: "pointer" }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ────────────────────────────────────────────────────────
+export default function HypeMeter() {
+  const [ticker, setTicker] = useState<string>("NVDA");
+  const [data, setData] = useState<HypeData | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [savedAlerts, setSavedAlerts] = useState<Alert[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    // 1. Define an async function inside the effect
+    const loadHypeData = async () => {
+      setLoading(true); 
+      
+      try {
+        const res = await fetchHypeScore(ticker);
+        if (active) {
+          setData(res);
+        }
+      } catch (error) {
+        console.error("Failed to fetch hype score:", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // 2. Call the function
+    loadHypeData();
+
+    // 3. Cleanup to prevent memory leaks if the user clicks away early
+    return () => {
+      active = false;
+    };
+  }, [ticker]);
+
+  if (!data) return <div style={{ color: "#8892a0" }}>Loading gauge...</div>;
+
+  const score = data.hypeScore;
+  const colorConf = scoreToColor(score);
+
+  // Gauge SVG Math
+  const r = 80;
+  const cx = 100;
+  const cy = 100;
+  const startAngle = -120;
+  const endAngle = 120;
+  const totalAngle = endAngle - startAngle;
+  const currentAngle = startAngle + (score / 100) * totalAngle;
+
+  const startPt = polarToXY(cx, cy, r, startAngle);
+  const endPt = polarToXY(cx, cy, r, endAngle);
+  const currentPt = polarToXY(cx, cy, r, currentAngle);
+
+  const trackArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 1 1 ${endPt.x} ${endPt.y}`;
+  const fillArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 ${score > 50 ? 1 : 0} 1 ${currentPt.x} ${currentPt.y}`;
+
+  return (
+    <div style={{ position: "relative", width: 260, background: "transparent", borderRadius: 16, padding: 20, fontFamily: "inherit" }}>
+      
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorConf.main, boxShadow: `0 0 8px ${colorConf.glow}` }} />
+          <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>{data.ticker}</span>
+        </div>
+        <button onClick={() => setShowAlert(true)} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 8px", fontSize: 12, cursor: "pointer", transition: "0.2s" }}>
           + Alert
         </button>
       </div>
 
-      {/* Ticker input display */}
-      <div style={{
-        background: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: '6px',
-        padding: '6px 12px',
-        color: 'white',
-        fontSize: '0.85rem',
-        marginBottom: '16px',
-      }}>
-        {symbol}
+      {/* Input */}
+      <div style={{ marginBottom: 20 }}>
+        <input 
+          type="text" 
+          value={ticker} 
+          onChange={(e) => setTicker(e.target.value.toUpperCase())}
+          style={{ width: "100%", background: "#1e293b", border: "1px solid #334155", color: "#fff", padding: "8px 12px", borderRadius: 6, outline: "none", fontSize: 14 }}
+          placeholder="Enter ticker..."
+        />
       </div>
 
-      {/* Gauge */}
-      <div style={{ textAlign: 'center', position: 'relative' }}>
-        <svg width="200" height="120" viewBox="0 0 200 120">
-          {/* Background arc */}
-          <path
-            d="M 20 100 A 80 80 0 0 1 180 100"
-            fill="none"
-            stroke="#1e293b"
-            strokeWidth="14"
-            strokeLinecap="round"
-          />
-          {/* Filled arc */}
-          <path
-            d="M 20 100 A 80 80 0 0 1 180 100"
-            fill="none"
-            stroke={color}
-            strokeWidth="14"
-            strokeLinecap="round"
-            strokeDasharray="251"
-            strokeDashoffset={251 - (251 * score) / 100}
-            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
-          />
+      {/* SVG Gauge */}
+      <div style={{ display: "flex", justifyContent: "center", position: "relative", height: 130 }}>
+        <svg width="200" height="150" viewBox="0 0 200 150">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <path d={trackArc} fill="none" stroke="#1e293b" strokeWidth="12" strokeLinecap="round" />
+          <path d={fillArc} fill="none" stroke={colorConf.main} strokeWidth="12" strokeLinecap="round" filter="url(#glow)" style={{ transition: "stroke-dasharray 1s ease-out" }} />
+          <circle cx={currentPt.x} cy={currentPt.y} r="6" fill="#fff" filter="url(#glow)" />
         </svg>
-
-        {/* Score + label */}
-        <div style={{ marginTop: '-55px' }}>
-          <div style={{ fontSize: '48px', fontWeight: 'bold', color: 'white', lineHeight: 1 }}>
-            {loading ? '...' : score}
-          </div>
-          <div style={{ color: color, fontWeight: 'bold', letterSpacing: '2px', fontSize: '13px', marginTop: '4px' }}>
-            {label}
-          </div>
+        
+        <div style={{ position: "absolute", top: 60, textAlign: "center" }}>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#fff", lineHeight: "1" }}>{loading ? "..." : score}</div>
+          <div style={{ fontSize: 12, color: colorConf.main, fontWeight: 600, letterSpacing: 1 }}>{colorConf.label}</div>
         </div>
       </div>
 
-      {/* SENTIMENT + SIGNALS row */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '16px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Sentiment</div>
-          <div style={{ color: 'white', fontSize: '0.85rem', fontWeight: '600', marginTop: '2px' }}>{sentiment}</div>
+      {/* Footer Stats */}
+      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #1e293b", paddingTop: 15, marginTop: 10 }}>
+        <div style={{ textAlign: "center", flex: 1 }}>
+          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Sentiment</div>
+          <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.sentiment}</div>
         </div>
-        <div style={{ width: '1px', background: '#1e293b' }} />
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Signals</div>
-          <div style={{ color: 'white', fontSize: '0.85rem', fontWeight: '600', marginTop: '2px' }}>{signals} detected</div>
+        <div style={{ width: 1, background: "#1e293b" }} />
+        <div style={{ textAlign: "center", flex: 1 }}>
+          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Signals</div>
+          <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.headline_count} detected</div>
         </div>
       </div>
 
-      {/* Alert Modal */}
+      {/* Alerts List */}
+      {savedAlerts.length > 0 && (
+        <div style={{ marginTop: 15, background: "#1e293b", borderRadius: 8, padding: 10 }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase" }}>Active Alerts</div>
+          {savedAlerts.map((a, i) => {
+            const c = scoreToColor(a.threshold);
+            return (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < savedAlerts.length - 1 ? "1px solid #334155" : "none" }}>
+                <span style={{ fontSize: 12, color: "#fff" }}>{a.ticker}</span>
+                <span style={{ fontSize: 12, color: c.main }}>{a.direction === "above" ? "▲" : "▼"} {a.threshold}</span>
+                <button onClick={() => setSavedAlerts(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {showAlert && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.7)', borderRadius: '16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 100,
-        }}>
-          <div style={{
-            background: '#0f172a',
-            border: '1px solid #334155',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '260px',
-          }}>
-            <h4 style={{ margin: '0 0 16px 0', textAlign: 'center', fontSize: '1rem' }}>
-              Set Alert for {symbol}
-            </h4>
-
-            {/* Above / Below toggle */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <button
-                onClick={() => setAlertDirection('above')}
-                style={{
-                  flex: 1, padding: '8px',
-                  borderRadius: '8px', border: 'none',
-                  background: alertDirection === 'above' ? '#38bdf8' : '#1e293b',
-                  color: 'white', cursor: 'pointer', fontWeight: '600',
-                }}
-              >
-                Above
-              </button>
-              <button
-                onClick={() => setAlertDirection('below')}
-                style={{
-                  flex: 1, padding: '8px',
-                  borderRadius: '8px', border: 'none',
-                  background: alertDirection === 'below' ? '#38bdf8' : '#1e293b',
-                  color: 'white', cursor: 'pointer', fontWeight: '600',
-                }}
-              >
-                Below
-              </button>
-            </div>
-
-            {/* Threshold slider */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '8px' }}>
-                Threshold Score (0-100)
-              </div>
-              <input
-                type="range"
-                min={0} max={100}
-                value={alertThreshold}
-                onChange={(e) => setAlertThreshold(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#38bdf8' }}
-              />
-              <div style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', marginTop: '4px' }}>
-                {alertThreshold}
-              </div>
-            </div>
-
-            {/* Cancel / Save */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setShowAlert(false)}
-                style={{
-                  flex: 1, padding: '8px',
-                  borderRadius: '8px', border: '1px solid #334155',
-                  background: 'transparent', color: 'white', cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveAlert}
-                style={{
-                  flex: 1, padding: '8px',
-                  borderRadius: '8px', border: 'none',
-                  background: '#38bdf8', color: 'white',
-                  cursor: 'pointer', fontWeight: '600',
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <AlertPanel ticker={ticker} onClose={() => setShowAlert(false)} onSave={(alert) => setSavedAlerts(prev => [...prev.filter(a => a.ticker !== alert.ticker), alert])} />
       )}
     </div>
   );
