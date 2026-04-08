@@ -14,7 +14,10 @@ const ALL_TICKERS: TickerEntry[] = (tickerData as TickerEntry[]).sort((a, b) =>
 );
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<'search' | 'manual'>('search');
+  // ✅ Remember the mode across page navigations
+  const [mode, setMode] = useState<'search' | 'manual'>(
+    () => (sessionStorage.getItem('inputMode') as 'search' | 'manual') || 'search'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<TickerEntry[]>(ALL_TICKERS);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -38,6 +41,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const handleModeChange = (newMode: 'search' | 'manual') => {
     setMode(newMode);
+    sessionStorage.setItem('inputMode', newMode); // ✅ save to session
     setSearchQuery('');
     setManualQuery('');
     setResults(ALL_TICKERS);
@@ -98,7 +102,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   Search for a stock:
                 </div>
 
-                {/* Single input — user types directly here, no inner search box */}
                 <div style={{ position: 'relative', maxWidth: '600px' }}>
                   <input
                     ref={searchInputRef}
@@ -140,7 +143,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   />
                 </div>
 
-                {/* Dropdown — shows all tickers A-Z, scrollable */}
                 {showDropdown && (
                   <div style={{
                     position: 'absolute',
