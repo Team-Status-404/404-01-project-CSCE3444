@@ -52,7 +52,7 @@ fi
 source venv/bin/activate
 
 info "Installing Python dependencies..."
-pip install -r requirements.txt --quiet
+pip3 install -r requirements.txt --quiet
 
 if [ ! -f ".env" ]; then
   cp .env.example .env
@@ -94,7 +94,7 @@ echo ""
 echo -e "  ${BOLD}Terminal 1 — Backend:${NC}"
 echo "    cd backend"
 echo "    source venv/bin/activate"
-echo "    python app.py"
+echo "    python3 app.py"
 echo ""
 echo -e "  ${BOLD}Terminal 2 — Frontend:${NC}"
 echo "    cd frontend"
