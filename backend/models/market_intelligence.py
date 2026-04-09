@@ -1,12 +1,16 @@
 import os
 import requests
 import time
+from dotenv import load_dotenv
 from curl_cffi import requests as curl_requests
 import psycopg2
 import yfinance as yf
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+# ✅ Load environment variables
+load_dotenv()
 
 
 def get_db_connection():
@@ -20,6 +24,7 @@ def get_db_connection():
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
     )
+
 
 class Stock:
     def __init__(self, ticker_symbol: str):
@@ -36,172 +41,59 @@ class Stock:
 
     def fetch_stock_data(self) -> Dict[str, Any]:
         conn = None
-        
+
         # 1. --- READ FROM DATABASE CACHE ---
         try:
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute(
                 """
-                SELECT company_name, sector, current_price, volatility, 
-                       moving_average_5_day, volume, market_cap, 
-                       fifty_two_week_high, fifty_two_week_low 
-                FROM stocks 
+                SELECT company_name, sector, current_price, volatility,
+                       moving_average_5_day, volume, market_cap,
+                       fifty_two_week_high, fifty_two_week_low
+                FROM stocks
                 WHERE ticker = %s AND last_updated >= NOW() - INTERVAL '5 minutes'
                 """,
                 (self._tickerSymbol,)
             )
             cached_row = cur.fetchone()
             cur.close()
-            
+
             if cached_row:
                 (self._companyName, self._sector, self._currentPrice, self._volatility,
                  self._movingAverage5Day, self._volume, self._marketCap,
                  self._fiftyTwoWeekHigh, self._fiftyTwoWeekLow) = cached_row
-                return {
-                    "status": "success", "source": "database_cache", "cached": True,
-                    "data": self._get_data_dict()
-                }
+
+                if self._currentPrice and float(self._currentPrice) > 0:
+                    print(f"DEBUG: Returning DB cache for {self._tickerSymbol}")
+                    return {
+                        "status": "success",
+                        "source": "database_cache",
+                        "cached": True,
+                        "data": self._get_data_dict()
+                    }
+                else:
+                    print(f"DEBUG: DB cache has invalid price for {self._tickerSymbol}, re-fetching")
+
         except Exception as e:
             print(f"DEBUG: Stock Cache Read Error: {e}")
         finally:
-            if conn: conn.close()
+            if conn:
+                conn.close()
 
-        # 2. --- FETCH FRESH DATA ---
-        api_key = os.getenv("FINANCE_DATA_KEY")
-        if not api_key:
-            # No API key — go straight to yfinance
-            return self._fallback_yfinance()
+        # 2. --- FETCH FRESH DATA FROM YFINANCE ---
+        fresh_data = self._fetch_from_yfinance()
 
-        fresh_data = None
-        try:
-            profile_url = f"https://financialmodelingprep.com/stable/profile?symbol={self._tickerSymbol}&apikey={api_key}"
-            profile_resp = requests.get(profile_url, timeout=10)
-            
-            if profile_resp.status_code == 402:
-                print(f"DEBUG: FMP 402 for {self._tickerSymbol}, falling back to yfinance")
-                fresh_data = self._fallback_yfinance()
-
-            elif profile_resp.status_code == 200:
-                profile_data = profile_resp.json()
-
-                # ✅ FIX 1: check profile_data is a non-empty list with a real object
-                if profile_data and isinstance(profile_data, list) and len(profile_data) > 0 and profile_data[0]:
-                    p = profile_data[0]
-                    self._companyName = p.get('companyName', self._tickerSymbol)
-                    self._sector = p.get('sector')
-                    self._marketCap = p.get('mcap')
-                    self._volume = p.get('volAvg')
-
-                    # ✅ FIX 2: wrap 52-week range parsing in try/except
-                    try:
-                        price_range = p.get('range', "") or ""
-                        parts = price_range.split("-")
-                        if len(parts) == 2:
-                            self._fiftyTwoWeekLow = float(parts[0])
-                            self._fiftyTwoWeekHigh = float(parts[1])
-                    except (ValueError, AttributeError):
-                        pass  # leave as None, yfinance will fill it in
-
-                    # --- HISTORICAL DATA ---
-                    try:
-                        history_url = f"https://financialmodelingprep.com/stable/historical-price-eod/full?symbol={self._tickerSymbol}&apikey={api_key}"
-                        history_resp = requests.get(history_url, timeout=10)
-                        if history_resp.status_code == 200:
-                            h_data = history_resp.json()
-                            # ✅ FIX 3: check h_data is a non-empty list
-                            if h_data and isinstance(h_data, list) and len(h_data) >= 5:
-                                self._currentPrice = round(h_data[0]['close'], 2)
-                                recent = h_data[:5]
-                                closes = [d['close'] for d in recent]
-                                self._movingAverage5Day = round(sum(closes) / 5, 2)
-                                ranges = [(d['high'] - d['low']) / d['close'] for d in recent]
-                                self._volatility = round((sum(ranges) / 5) * 100, 2)
-                                fresh_data = {"status": "success", "source": "fmp", "data": self._get_data_dict()}
-                            else:
-                                # FMP gave us profile but no history — fall back for price data
-                                print(f"DEBUG: FMP history empty for {self._tickerSymbol}, falling back")
-                                fresh_data = self._fallback_yfinance()
-                        else:
-                            fresh_data = self._fallback_yfinance()
-                    except Exception as e:
-                        print(f"DEBUG: FMP History Error for {self._tickerSymbol}: {e}")
-                        fresh_data = self._fallback_yfinance()
-                else:
-                    # ✅ FIX 4: FMP returned empty [] — ticker not in their DB, use yfinance
-                    print(f"DEBUG: FMP returned empty profile for {self._tickerSymbol}, falling back")
-                    fresh_data = self._fallback_yfinance()
-            else:
-                # Any other HTTP error
-                print(f"DEBUG: FMP returned status {profile_resp.status_code} for {self._tickerSymbol}")
-                fresh_data = self._fallback_yfinance()
-
-        except Exception as e:
-            print(f"DEBUG: FMP Error for {self._tickerSymbol}: {e}")
-            fresh_data = self._fallback_yfinance()
-
-        # ✅ FIX 5: if fresh_data is still None for any reason, force yfinance
-        if fresh_data is None:
-            print(f"DEBUG: fresh_data still None for {self._tickerSymbol}, forcing yfinance")
-            fresh_data = self._fallback_yfinance()
-
-        # 3. --- SAVE TO DATABASE ---
+        # 3. --- SAVE TO DATABASE IF SUCCESSFUL ---
         if fresh_data and fresh_data.get("status") == "success":
             self._save_to_db()
             fresh_data["cached"] = False
 
-        # ✅ FIX 6: if still None somehow, return a clean error instead of None
-        if fresh_data is None:
-            return {"status": "error", "message": f"Could not fetch data for {self._tickerSymbol}"}
-
         return fresh_data
 
-    def _get_data_dict(self) -> Dict[str, Any]:
-        return {
-            "ticker": self._tickerSymbol,
-            "companyName": self._companyName,
-            "sector": self._sector,
-            "currentPrice": float(self._currentPrice) if self._currentPrice else None,
-            "movingAverage5Day": float(self._movingAverage5Day) if self._movingAverage5Day else None,
-            "volatility": float(self._volatility) if self._volatility else None,
-            "volume": self._volume,
-            "marketCap": self._marketCap,
-            "fiftyTwoWeekHigh": float(self._fiftyTwoWeekHigh) if self._fiftyTwoWeekHigh else None,
-            "fiftyTwoWeekLow": float(self._fiftyTwoWeekLow) if self._fiftyTwoWeekLow else None
-        }
-
-    def _save_to_db(self):
-        conn = None
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO stocks (ticker, company_name, sector, current_price, volatility, 
-                                   moving_average_5_day, volume, market_cap, 
-                                   fifty_two_week_high, fifty_two_week_low, last_updated) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (ticker) DO UPDATE SET 
-                    company_name = EXCLUDED.company_name, sector = EXCLUDED.sector,
-                    current_price = EXCLUDED.current_price, volatility = EXCLUDED.volatility,
-                    moving_average_5_day = EXCLUDED.moving_average_5_day,
-                    volume = EXCLUDED.volume, market_cap = EXCLUDED.market_cap,
-                    fifty_two_week_high = EXCLUDED.fifty_two_week_high,
-                    fifty_two_week_low = EXCLUDED.fifty_two_week_low,
-                    last_updated = EXCLUDED.last_updated
-                """,
-                (self._tickerSymbol, self._companyName, self._sector, self._currentPrice,
-                 self._volatility, self._movingAverage5Day, self._volume, self._marketCap,
-                 self._fiftyTwoWeekHigh, self._fiftyTwoWeekLow)
-            )
-            conn.commit()
-            cur.close()
-        except Exception as e:
-            print(f"DEBUG: Stock DB Write Error: {e}")
-        finally:
-            if conn: conn.close()
-
-    def _fallback_yfinance(self) -> Dict[str, Any]:
+    # ✅ ADDED MISSING METHOD
+    def _fetch_from_yfinance(self) -> Dict[str, Any]:
+        """Fetch stock data from yfinance."""
         try:
             stock_obj = yf.Ticker(self._tickerSymbol)
             hist = stock_obj.history(period="1mo")
@@ -228,6 +120,56 @@ class Stock:
             return {"status": "success", "source": "yfinance", "data": self._get_data_dict()}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def _get_data_dict(self) -> Dict[str, Any]:
+        return {
+            "ticker": self._tickerSymbol,
+            "companyName": self._companyName,
+            "sector": self._sector,
+            "currentPrice": float(self._currentPrice) if self._currentPrice else None,
+            "movingAverage5Day": float(self._movingAverage5Day) if self._movingAverage5Day else None,
+            "volatility": float(self._volatility) if self._volatility else None,
+            "volume": self._volume,
+            "marketCap": self._marketCap,
+            "fiftyTwoWeekHigh": float(self._fiftyTwoWeekHigh) if self._fiftyTwoWeekHigh else None,
+            "fiftyTwoWeekLow": float(self._fiftyTwoWeekLow) if self._fiftyTwoWeekLow else None
+        }
+
+    def _save_to_db(self):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO stocks (ticker, company_name, sector, current_price, volatility,
+                                   moving_average_5_day, volume, market_cap,
+                                   fifty_two_week_high, fifty_two_week_low, last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker) DO UPDATE SET
+                    company_name = EXCLUDED.company_name,
+                    sector = EXCLUDED.sector,
+                    current_price = EXCLUDED.current_price,
+                    volatility = EXCLUDED.volatility,
+                    moving_average_5_day = EXCLUDED.moving_average_5_day,
+                    volume = EXCLUDED.volume,
+                    market_cap = EXCLUDED.market_cap,
+                    fifty_two_week_high = EXCLUDED.fifty_two_week_high,
+                    fifty_two_week_low = EXCLUDED.fifty_two_week_low,
+                    last_updated = EXCLUDED.last_updated
+                """,
+                (self._tickerSymbol, self._companyName, self._sector, self._currentPrice,
+                 self._volatility, self._movingAverage5Day, self._volume, self._marketCap,
+                 self._fiftyTwoWeekHigh, self._fiftyTwoWeekLow)
+            )
+            conn.commit()
+            cur.close()
+            print(f"DEBUG: Saved {self._tickerSymbol} to DB")
+        except Exception as e:
+            print(f"DEBUG: Stock DB Write Error: {e}")
+        finally:
+            if conn:
+                conn.close()
 
 
 class NewsArticle:
@@ -258,13 +200,16 @@ class SentimentAnalyzer:
                     messages = response.json().get('messages', [])
                     if not messages:
                         return 0.0, 0
-                    total_compound = sum(self._vaderEngine.polarity_scores(msg.get('body', ''))['compound'] for msg in messages)
+                    total_compound = sum(
+                        self._vaderEngine.polarity_scores(msg.get('body', ''))['compound']
+                        for msg in messages
+                    )
                     volume = len(messages)
                     return round(total_compound / volume, 4) if volume > 0 else 0.0, volume
                 elif response.status_code == 429:
                     print(f"DEBUG: Rate limited on {ticker}. Attempt {attempt + 1} of {max_retries}.")
                 else:
-                    print(f"DEBUG: StockTwits API Blocked for {ticker} (Status: {response.status_code}). Attempt {attempt + 1}.")
+                    print(f"DEBUG: StockTwits blocked for {ticker} (Status: {response.status_code}). Attempt {attempt + 1}.")
             except Exception as e:
                 print(f"DEBUG: Chatter Error on {ticker} (Attempt {attempt + 1}): {str(e)}")
             if attempt < max_retries - 1:
@@ -304,13 +249,14 @@ class SentimentAnalyzer:
     def calculateHypeScore(self, ticker: str) -> Dict[str, Any]:
         ticker_upper = ticker.upper()
         conn = None
+
         try:
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute(
                 """
-                SELECT social_volume, news_volume, sentiment_score, final_hype_score, tag 
-                FROM hype_metrics 
+                SELECT social_volume, news_volume, sentiment_score, final_hype_score, tag
+                FROM hype_metrics
                 WHERE ticker = %s AND created_at >= NOW() - INTERVAL '5 minutes'
                 ORDER BY created_at DESC LIMIT 1
                 """,
@@ -361,7 +307,7 @@ class SentimentAnalyzer:
             cur = conn.cursor()
             cur.execute("SELECT 1 FROM stocks WHERE ticker = %s", (ticker_upper,))
             if not cur.fetchone():
-                print(f"DEBUG: {ticker_upper} not found in stocks table. Fetching profile...")
+                print(f"DEBUG: {ticker_upper} not found in stocks table, fetching via yfinance...")
                 stock_obj = Stock(ticker_upper)
                 profile = stock_obj.fetch_stock_data()
                 company_name = ticker_upper
@@ -376,16 +322,17 @@ class SentimentAnalyzer:
                     volatility = data.get("volatility")
                 cur.execute(
                     """
-                    INSERT INTO stocks (ticker, company_name, sector, current_price, volatility) 
+                    INSERT INTO stocks (ticker, company_name, sector, current_price, volatility)
                     VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (ticker) DO NOTHING
                     """,
                     (ticker_upper, company_name, sector, current_price, volatility)
                 )
+
             cur.execute(
                 """
-                INSERT INTO hype_metrics 
-                (ticker, social_volume, news_volume, sentiment_score, final_hype_score, tag) 
+                INSERT INTO hype_metrics
+                (ticker, social_volume, news_volume, sentiment_score, final_hype_score, tag)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (ticker_upper, chatter_vol, news_vol, round(final_compound, 4), hype_score, tag)

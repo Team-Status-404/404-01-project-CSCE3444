@@ -1,7 +1,10 @@
 import os
+import time
+from dotenv import load_dotenv
+load_dotenv()  # MUST be first before any other imports
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from dotenv import load_dotenv
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import yfinance as yf
 import threading
@@ -11,11 +14,14 @@ from models.market_intelligence import Stock, SentimentAnalyzer, get_db_connecti
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 
-# Load environment variables (Supabase URL, API Keys, etc.)
-load_dotenv()
-
 app = Flask(__name__)
 CORS(app)
+
+# ==========================================
+# CACHE CONFIGURATION
+# ==========================================
+_stock_cache = {}
+CACHE_TTL = 60  # seconds
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -38,11 +44,25 @@ def home():
 def get_stock_data(ticker):
     """Fetch stock price, name, and moving averages using the Stock object."""
     try:
+        now = time.time()
+
+        # Return cached result if still fresh
+        if ticker in _stock_cache and now - _stock_cache[ticker]['ts'] < CACHE_TTL:
+            print(f"DEBUG: Returning cached data for {ticker}")
+            return jsonify(_stock_cache[ticker]['data']), 200
+
+        # Fetch fresh from yfinance
         target_stock = Stock(ticker_symbol=ticker)
         result = target_stock.fetch_stock_data()
+
         if result.get("status") == "error":
             return jsonify(result), 404
+
+        # Store in cache
+        _stock_cache[ticker] = {'data': result, 'ts': now}
+        print(f"DEBUG: Fetched and cached fresh data for {ticker}")
         return jsonify(result), 200
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

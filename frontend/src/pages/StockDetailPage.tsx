@@ -159,7 +159,7 @@ export default function StockDetailPage() {
             {/* HypeMeter */}
             <div style={{ background: '#0f172a', padding: '25px', borderRadius: '20px', border: '1px solid #1e293b' }}>
               <h3 style={{ color: '#94a3b8', fontSize: '1.1rem', margin: '0 0 20px 0' }}>AI Hype Meter</h3>
-              <HypeMeter symbol={ticker} />
+              <HypeMeter />
             </div>
 
             {/* Recent News */}
