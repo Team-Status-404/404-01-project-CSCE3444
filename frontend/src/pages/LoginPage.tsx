@@ -56,7 +56,14 @@ export default function LoginPage() {
     try {
       const result = await googleLogin(credentialResponse.credential);
       if (result.status === 'success') {
-        navigate('/dashboard');
+        
+        // logic for google users to route to onboarding page if they are new
+        if (result.is_new_user) {
+          navigate('/onboarding');
+        } else {
+          navigate('/dashboard');
+        }
+        
       } else {
         setError(result.message || 'Google sign-in failed');
       }
