@@ -14,7 +14,6 @@ const ALL_TICKERS: TickerEntry[] = (tickerData as TickerEntry[]).sort((a, b) =>
 );
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  // ✅ Remember the mode across page navigations
   const [mode, setMode] = useState<'search' | 'manual'>(
     () => (sessionStorage.getItem('inputMode') as 'search' | 'manual') || 'search'
   );
@@ -41,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const handleModeChange = (newMode: 'search' | 'manual') => {
     setMode(newMode);
-    sessionStorage.setItem('inputMode', newMode); // ✅ save to session
+    sessionStorage.setItem('inputMode', newMode);
     setSearchQuery('');
     setManualQuery('');
     setResults(ALL_TICKERS);
@@ -102,7 +101,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   Search for a stock:
                 </div>
 
-                <div style={{ position: 'relative', maxWidth: '600px' }}>
+                {/* ✅ wider input box */}
+                <div style={{ position: 'relative', maxWidth: '900px' }}>
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -143,13 +143,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   />
                 </div>
 
+                {/* ✅ wider dropdown */}
                 {showDropdown && (
                   <div style={{
                     position: 'absolute',
                     top: 'calc(100% + 4px)',
                     left: 0,
                     width: '100%',
-                    maxWidth: '600px',
+                    maxWidth: '900px',
                     background: '#1e293b',
                     border: '1px solid #334155',
                     borderRadius: '8px',
