@@ -424,6 +424,12 @@ class SentimentAnalyzer:
                 (ticker_upper, chatter_vol, news_vol, round(final_compound, 4), hype_score, tag)
             )
             
+            # Automated Cleanup Block, runs everytime a new hypescore for a ticker is added to the database
+            # Deletes any sentiment records older than 5 days to keep the database lean
+            cur.execute(
+                "DELETE FROM hype_metrics WHERE created_at < (CURRENT_TIMESTAMP - INTERVAL '5 days');"
+            )
+            
             conn.commit()
             cur.close()
             
@@ -466,6 +472,10 @@ def get_price_data_and_ma(ticker_symbol: str):
         stock = yf.Ticker(ticker_symbol)
         hist = stock.history(period="5d") # grabs the past five days of trading data for the stock
         
+        # Drop any invalid rows where the 'Close' price is NaN
+        hist = hist.dropna(subset=['Close'])
+        
+        # Check if empty AFTER dropping NaNs
         if hist.empty:
             return {"error": "No data found"}
 
