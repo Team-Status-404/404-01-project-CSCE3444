@@ -13,7 +13,7 @@ from models.user_management import User, token_required
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app, origins=["http://localhost:5173"])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -234,11 +234,12 @@ def delete_account():
 def update_profile():
     """Updates user information (protected — requires JWT)."""
     data = request.json
-    new_username = data.get('username')
-    new_email = data.get('email')
-
     current_user = User(request.current_user_id, request.current_username, "")
-    result = current_user.updateProfile(new_username, new_email)
+    result = current_user.updateProfile(
+        new_username=data.get('username'),
+        new_email=data.get('email'),
+        new_password=data.get('password'),
+    )
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
