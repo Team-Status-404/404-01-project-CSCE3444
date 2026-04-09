@@ -424,6 +424,12 @@ class SentimentAnalyzer:
                 (ticker_upper, chatter_vol, news_vol, round(final_compound, 4), hype_score, tag)
             )
             
+            # Automated Cleanup Block, runs everytime a new hypescore for a ticker is added to the database
+            # Deletes any sentiment records older than 5 days to keep the database lean
+            cur.execute(
+                "DELETE FROM hype_metrics WHERE created_at < (CURRENT_TIMESTAMP - INTERVAL '5 days');"
+            )
+            
             conn.commit()
             cur.close()
             
@@ -446,3 +452,108 @@ class SentimentAnalyzer:
             },
             "cached": False
         }
+        
+        
+""" Dashboard helper functions for the Watchlist class
+    Even though the functions below serve the Watchlist class 
+    they belong in this file because of "Sepration of Concerns".
+    Porfolio.py is focused on the user, and needs user id to do anything
+    Market_Intelligence does not care who the user is, only about the ticker
+    symbol, and provides global information for all users.
+    Its better to keep them as stand alone helper functions, that are easily accessible.
+"""
+# ==========================================
+# DASHBOARD HELPER FUNCTIONS
+# ==========================================
+
+def get_price_data_and_ma(ticker_symbol: str):
+    """Fetches current price and the stock's 5-day moving average."""
+    try:
+        stock = yf.Ticker(ticker_symbol)
+        hist = stock.history(period="5d") # grabs the past five days of trading data for the stock
+        
+        # Drop any invalid rows where the 'Close' price is NaN
+        hist = hist.dropna(subset=['Close'])
+        
+        # Check if empty AFTER dropping NaNs
+        if hist.empty:
+            return {"error": "No data found"}
+
+        ma_5_day = hist['Close'].mean()
+        current_price = hist['Close'].iloc[-1]
+        
+        price_5_days_ago = hist['Close'].iloc[0]
+        
+        # calucates the percent change between the oldest price in the five day dataset and the newest price in the dataset
+        price_trend_pct = (current_price - price_5_days_ago) / price_5_days_ago 
+        
+        # converts the pandas datafram into a python list, so the it can easily changed to a json object
+        historical_prices = hist['Close'].tolist()
+
+        return {
+            "current_price": float(round(current_price, 2)),
+            "ma_5_day": float(round(ma_5_day, 2)),
+            "price_trend_pct": float(price_trend_pct), # Cast to standard float here
+            "historical_prices": historical_prices
+        }
+    except Exception as e:
+        print(f"yfinance error for {ticker_symbol}: {e}")
+        return {"error": str(e)}
+
+def calculate_divergence_flag(price_trend_pct: float, sentiment_trend_pct: float) -> bool:
+    """FR-03: Flags if divergence between price trend and sentiment trend is > 20%."""
+    divergence = abs(price_trend_pct - sentiment_trend_pct)
+    # returns true of divergence is greater than 20 percent
+    return bool(divergence > 0.20)
+
+def get_5_day_sentiment(ticker_symbol: str) -> dict:
+    """Fetches the 5-day (stock market week) historical sentiment for the stock from the hype_metrics table."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute(
+            """
+            SELECT DATE(created_at) as log_date, AVG(final_hype_score) as avg_score
+            FROM hype_metrics
+            WHERE ticker = %s AND created_at >= (CURRENT_TIMESTAMP::timestamp - INTERVAL '5 days')
+            GROUP BY DATE(created_at)
+            ORDER BY log_date ASC;
+            """,
+            (ticker_symbol.upper(),)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        
+        # Checks if the database returned no data, or only 1 day of data. Need at least 2 days of data to calculate a trend.
+        if not rows or len(rows) < 2:
+            # If there isn't enough data, it returns a safe default: a 0% trend and a list of five zeros.
+            return {"trend_pct": 0.0, "historical_sentiment": [0.0] * 5}
+
+        historical_sentiment = [float(row[1] or 0.0) for row in rows]
+        oldest_score = historical_sentiment[0]
+        newest_score = historical_sentiment[-1]
+        
+        # Calculates the percentage change from the oldest score to the newest.
+        trend_pct = 0.0 if oldest_score == 0 else (newest_score - oldest_score) / oldest_score
+
+        while len(historical_sentiment) < 5:
+            # Pads the list by duplicating the oldest score and inserting it at the very beginning 
+            # (index 0) of the list until the list has 5 items. This ensures the frontend graph always 
+            # receives exactly 5 data points so it renders correctly.
+            historical_sentiment.insert(0, oldest_score)
+            
+        # slices the list to keep only the last 5 items, guaranteeing the list size never accidentally exceeds 5.
+        historical_sentiment = historical_sentiment[-5:]
+
+        return {
+            "trend_pct": trend_pct,
+            "historical_sentiment": historical_sentiment
+        }
+    except Exception as e:
+        print(f"DEBUG Sentiment DB Error for {ticker_symbol}: {e}")
+        return {"trend_pct": 0.0, "historical_sentiment": [0.0] * 5}
+    finally:
+        if conn is not None:
+            conn.close()

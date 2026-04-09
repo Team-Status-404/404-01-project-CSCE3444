@@ -187,6 +187,7 @@ class User:
             if row:
                 # if exists, log in
                 user_id, username = row
+                is_new_user = False # Tag as existing user
             else:
                 # if new user, auto register — ensure the username is unique
                 placeholder_hash = bcrypt.hashpw(os.urandom(32), bcrypt.gensalt()).decode("utf-8")
@@ -205,6 +206,7 @@ class User:
                 )
                 user_id = cur.fetchone()[0]
                 conn.commit()
+                is_new_user = True # Tag as brand new user
 
             cur.close()
             token = _generate_token(user_id, username)
@@ -214,7 +216,7 @@ class User:
                 "username": username,
                 "email": google_email,
                 "token": token,
-                "is_oauth": True,
+                "is_new_user": is_new_user, # Pass the flag to the frontend
             }
         except Exception as e:
             if conn:

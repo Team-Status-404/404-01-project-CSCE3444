@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 
@@ -14,10 +14,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, redirect to dashboard
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // If already logged in when visiting this page, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +32,12 @@ export default function LoginPage() {
         : await login(email, password);
 
       if (result.status === 'success') {
-        navigate('/dashboard');
+        // Intercept new users and send them to onboarding
+        if (isSignUp) {
+          navigate('/onboarding');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(result.message || 'Something went wrong');
       }
@@ -49,7 +56,14 @@ export default function LoginPage() {
     try {
       const result = await googleLogin(credentialResponse.credential);
       if (result.status === 'success') {
-        navigate('/dashboard');
+        
+        // logic for google users to route to onboarding page if they are new
+        if (result.is_new_user) {
+          navigate('/onboarding');
+        } else {
+          navigate('/dashboard');
+        }
+        
       } else {
         setError(result.message || 'Google sign-in failed');
       }

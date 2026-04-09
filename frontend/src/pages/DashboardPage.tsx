@@ -1,114 +1,177 @@
+import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
-import StockCard from '../components/StockCard';
-import { watchlist } from '../data/stocks';
+import { useAuth } from '../context/AuthContext';
 import { 
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
-// --- MOCK DATA ---
-const trendData = [
-  { day: 'Mon', price: 150, sentiment: 65 },
-  { day: 'Tue', price: 152, sentiment: 70 },
-  { day: 'Wed', price: 149, sentiment: 45 },
-  { day: 'Thu', price: 155, sentiment: 80 },
-  { day: 'Fri', price: 158, sentiment: 85 },
-];
-
-const sentimentLeaderboard = [
-  { ticker: 'NVDA', score: 98, label: 'Extremely Bullish', color: '#4ade80' },
-  { ticker: 'SMCI', score: 87, label: 'Bullish', color: '#4ade80' },
-  { ticker: 'ARM', score: 76, label: 'Slightly Bullish', color: '#a3e635' },
-  { ticker: 'TSLA', score: 42, label: 'Neutral / Mixed', color: '#fbbf24' },
-  { ticker: 'AAPL', score: 28, label: 'Bearish', color: '#ef4444' },
-];
-
-const aiSignals = [
-  { id: 1, asset: 'AAPL', signal: 'Unusual Options Activity', type: 'positive', time: '10m ago' },
-  { id: 2, asset: 'TSLA', signal: 'Social Sentiment Drop', type: 'negative', time: '1h ago' },
-  { id: 3, asset: 'NVDA', signal: 'Whale Accumulation', type: 'positive', time: '2h ago' },
-];
+// Define the shape of our incoming backend data
+interface WatchlistData {
+  ticker: string;
+  current_price: number;
+  ma_5_day: number;
+  divergence_warning_active: boolean;
+  graph_data: {
+    historical_prices: number[];
+    historical_sentiment: number[];
+  };
+}
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [watchlist, setWatchlist] = useState<WatchlistData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  // State to track which stock is currently displayed in the Dual-Axis Graph
+  const [activeTicker, setActiveTicker] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      if (!user) return;
+      
+      try {
+        const res = await fetch(`http://localhost:5000/api/user/watchlist?user_id=${user.user_id}`);
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+          setWatchlist(data.watchlist);
+          // Set the first stock in the watchlist as the default active graph
+          if (data.watchlist.length > 0) {
+            setActiveTicker(data.watchlist[0].ticker);
+          }
+        } else {
+          setError(data.message || 'Failed to load watchlist.');
+        }
+      } catch (err) {
+        setError('Network error: Could not reach the server.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, [user]);
+
+  // --- CHART DATA FORMATTING ---
+  // Recharts requires an array of objects, so we zip the price and sentiment arrays together
+  const activeStock = watchlist.find(s => s.ticker === activeTicker);
+  const chartData = activeStock ? activeStock.graph_data.historical_prices.map((price, index) => ({
+    day: `Day ${index + 1}`,
+    price: price,
+    sentiment: activeStock.graph_data.historical_sentiment[index]
+  })) : [];
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#94a3b8' }}>
+          <h2>Loading your market intelligence...</h2>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <TopBar
         title="Market Intelligence"
-        subtitle="Welcome back, user. Sentiment is 89% Bullish for your core watchlist."
+        subtitle={watchlist.length === 0 ? "Your watchlist is empty." : "Real-time overview of your tracked assets."}
       />
 
-      {/* My Watchlist */}
+      {error && (
+        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid #ef4444', padding: '16px', margin: '20px 0', color: '#f8fafc' }}>
+          {error}
+        </div>
+      )}
+
+      {/* --- WATCHLIST GRID --- */}
       <section className="section-block" style={{ marginTop: '20px' }}>
         <h3 style={{ margin: '0 0 15px 0' }}>My Watchlist</h3>
-        <div className="watchlist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
-          {watchlist.map((stock) => (
-            <StockCard key={stock.symbol} stock={stock} />
-          ))}
-        </div>
-      </section>
-
-      {/* Price vs Sentiment Trend Graph */}
-      <section className="section-block" style={{ marginTop: '30px' }}>
-        <article className="card" style={{ padding: '24px', background: '#1e293b', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 20px 0' }}>Price vs. Sentiment Trend</h3>
-          <div style={{ height: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="day" stroke="#94a3b8" />
-                <YAxis yAxisId="left" stroke="#38bdf8" domain={['auto', 'auto']} />
-                <YAxis yAxisId="right" orientation="right" stroke="#4ade80" domain={[0, 100]} />
-                <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} />
-                
-                <Bar yAxisId="right" dataKey="sentiment" fill="#4ade80" opacity={0.3} radius={[4, 4, 0, 0]} name="Sentiment Score" />
-                <Line yAxisId="left" type="monotone" dataKey="price" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4 }} name="Avg Price" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-      </section>
-
-      {/* Bottom Split: Leaderboard & AI Signals */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '30px' }}>
         
-        {/* Left: Sentiment Leaderboard */}
-        <article className="card" style={{ padding: '24px', background: '#1e293b', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 20px 0' }}>Sentiment Leaderboard</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {sentimentLeaderboard.map((item, index) => (
-              <div key={item.ticker} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '1.2rem', width: '24px' }}>#{index + 1}</span>
-                  <strong style={{ fontSize: '1.2rem' }}>{item.ticker}</strong>
+        {watchlist.length === 0 && !isLoading && !error ? (
+          <p style={{ color: '#94a3b8' }}>You aren't tracking any stocks yet. Go to Markets to add some!</p>
+        ) : (
+          <div className="watchlist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+            {watchlist.map((stock) => (
+              <div 
+                key={stock.ticker} 
+                onClick={() => setActiveTicker(stock.ticker)}
+                style={{ 
+                  padding: '20px', 
+                  backgroundColor: activeTicker === stock.ticker ? '#1e293b' : '#0f172a', 
+                  borderRadius: '12px', 
+                  border: activeTicker === stock.ticker ? '2px solid #38bdf8' : '1px solid #334155',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Visual Warning Alert Banner (FR-03) */}
+                {stock.divergence_warning_active && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#ef4444', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center', padding: '4px', letterSpacing: '1px' }}>
+                    ⚠️ DIVERGENCE WARNING
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: stock.divergence_warning_active ? '15px' : '0' }}>
+                  <h2 style={{ margin: 0, color: '#f8fafc' }}>{stock.ticker}</h2>
+                  <h3 style={{ margin: 0, color: '#4ade80' }}>${stock.current_price.toFixed(2)}</h3>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <strong style={{ color: item.color, fontSize: '1.1rem', display: 'block' }}>{item.score}/100</strong>
-                  <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{item.label}</span>
+                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#94a3b8' }}>
+                  <span>5D MA:</span>
+                  <span>${stock.ma_5_day.toFixed(2)}</span>
                 </div>
               </div>
             ))}
           </div>
-        </article>
-
-        {/* Right: AI Signals */}
-        <article className="card" style={{ padding: '24px', background: '#1e293b', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 20px 0' }}>AI Signals</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {aiSignals.map((signal) => (
-              <div key={signal.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #334155' }}>
-                <div>
-                  <strong style={{ display: 'block', marginBottom: '4px' }}>{signal.asset}</strong>
-                  <span style={{ fontSize: '0.9rem', color: signal.type === 'positive' ? '#4ade80' : '#ef4444' }}>
-                    {signal.signal}
-                  </span>
-                </div>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{signal.time}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
+        )}
       </section>
+
+      {/* --- DUAL-AXIS GRAPH (FR-12) --- */}
+      {activeStock && (
+        <section className="section-block" style={{ marginTop: '40px' }}>
+          <article className="card" style={{ padding: '24px', background: '#1e293b', borderRadius: '12px', border: activeStock.divergence_warning_active ? '2px solid #ef4444' : '1px solid #334155' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 5px 0' }}>{activeStock.ticker} : Price vs. Sentiment</h3>
+                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>5-Day Historical Overlay</p>
+              </div>
+              
+              {/* Secondary Warning Alert for the Graph Area */}
+              {activeStock.divergence_warning_active && (
+                <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 16px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚠️</span> The price trend and sentiment trend have critically diverged.
+                </div>
+              )}
+            </div>
+
+            <div style={{ height: '350px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <XAxis dataKey="day" stroke="#94a3b8" />
+                  
+                  {/* Left Y-Axis: Mapped to Price */}
+                  <YAxis yAxisId="left" stroke="#38bdf8" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} />
+                  
+                  {/* Right Y-Axis: Mapped to Sentiment (0-100) */}
+                  <YAxis yAxisId="right" orientation="right" stroke="#4ade80" domain={[0, 100]} />
+                  
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} />
+                  <Legend />
+                  
+                  <Bar yAxisId="right" dataKey="sentiment" fill="#4ade80" opacity={0.4} radius={[4, 4, 0, 0]} name="Hype Score (0-100)" />
+                  <Line yAxisId="left" type="monotone" dataKey="price" stroke="#38bdf8" strokeWidth={3} dot={{ r: 5 }} name="Closing Price" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </article>
+        </section>
+      )}
     </Layout>
   );
 }

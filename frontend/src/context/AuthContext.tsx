@@ -18,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ status: string; message?: string }>;
   register: (username: string, email: string, password: string) => Promise<{ status: string; message?: string }>;
-  googleLogin: (credential: string) => Promise<{ status: string; message?: string }>;
+  googleLogin: (credential: string) => Promise<{ status: string; message?: string; is_new_user?: boolean }>; // updated authcontext interface to account for google new users
   logout: () => void;
 }
 

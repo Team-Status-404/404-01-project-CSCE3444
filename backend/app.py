@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 
@@ -31,7 +31,7 @@ def home():
     return jsonify({"message": "StockIQ Backend is running securely and is connected to Database"})
 
 # ==========================================
-# 1. MARKET DATA ROUTES (Jeel's route)
+# 1. MARKET DATA ROUTES
 # ==========================================
 
 @app.route('/api/stock/<ticker>', methods=['GET'])
@@ -104,6 +104,64 @@ def remove_from_watchlist():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/user/watchlist', methods=['GET'])
+def get_user_watchlist():
+    """
+    this function handles the user's dashboard portfolio view based on the items in their watchlist
+    It fetches a user's watchlist, calculates moving averages and sentiment trends, 
+    and checks for divergence warnings
+    """
+    # pulls user_id from the request payload from the front end
+    user_id = request.args.get('user_id')
+    
+    # validates that it received the user_id and returns an error response if validation failed
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+    
+    # instantiates a Watchlist class with the user id, and get the current tickers in the user's watchlist
+    user_watchlist = WatchList(user_id=user_id)
+    tickers = user_watchlist.get_all_tickers() 
+    
+    # if user has an empty watchlist, doesn't move forward to calculate anything
+    if not tickers:
+        return jsonify({"status": "success", "watchlist": []}), 200
+    
+    # empty list to hold the final payload as a response for the frontend
+    dashboard_data = []
+
+    for ticker in tickers:
+        stock_data = get_price_data_and_ma(ticker)
+        
+        # skips stocks that the data is not available due to one reason or another
+        if "error" in stock_data:
+            continue
+            
+        sentiment_data = get_5_day_sentiment(ticker)
+        
+        # calculates the 20 percent divergence warning
+        divergence_warning = calculate_divergence_flag(
+            stock_data['price_trend_pct'], 
+            sentiment_data['trend_pct']
+        )
+        
+        # builds the final payload for the frontend to display the sentiment vs price graph and other important variables
+        dashboard_data.append({
+            "ticker": ticker,
+            "current_price": stock_data['current_price'],
+            "ma_5_day": stock_data['ma_5_day'],
+            "divergence_warning_active": divergence_warning,
+            "graph_data": {
+                "historical_prices": stock_data['historical_prices'],
+                "historical_sentiment": sentiment_data['historical_sentiment']
+            }
+        })
+
+    return jsonify({
+        "status": "success",
+        "watchlist": dashboard_data
+    }), 200
+    
+    
 @app.route('/api/watchlist/alert', methods=['PATCH'])
 def toggle_alert():
     """Toggles the alert_enabled boolean for a specific stock."""
