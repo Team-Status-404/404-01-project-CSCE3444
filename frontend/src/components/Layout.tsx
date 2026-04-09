@@ -1,10 +1,12 @@
 import type { PropsWithChildren } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Search, Bell, User } from 'lucide-react'; // Added icons for the top nav
 
 type LayoutProps = PropsWithChildren;
 
 export default function Layout({ children }: LayoutProps) {
+  const navigate = useNavigate();
   return (
     <div className="app-shell">
       <Sidebar />
@@ -41,7 +43,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Notifications & Profile */}
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', color: '#94a3b8' }}>
-            <Bell size={20} style={{ cursor: 'pointer' }} />
+            <Bell size={20} style={{ cursor: 'pointer' }} onClick={() => navigate('/alerts')} />
             <div style={{ 
               width: '32px', 
               height: '32px', 
