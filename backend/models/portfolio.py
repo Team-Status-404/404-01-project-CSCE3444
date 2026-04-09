@@ -6,6 +6,7 @@ class WatchList:
     def __init__(self, user_id: int):
         self._userID: int = user_id
 
+    # helper function
     def checkLimit(self) -> int:
         """Counts how many stocks the user is watching in the database."""
         conn = None
@@ -24,6 +25,26 @@ class WatchList:
         finally:
             if conn is not None:
                 conn.close()
+               
+    # helper function 
+    def get_all_tickers(self) -> list:
+        """Returns a list of ticker strings for the user."""
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT ticker FROM watchlist WHERE user_id = %s;", (self._userID,))
+            rows = cur.fetchall()
+            cur.close()
+            
+            # Extracts the first item from each tuple returned by the DB
+            return [row[0] for row in rows] 
+        except Exception as e:
+            print(f"DEBUG DB Error fetching tickers: {e}")
+            return []
+        finally:
+            if conn is not None:
+                conn.close()
 
     def addTicker(self, ticker: str) -> Dict[str, Any]:
         """Enforces the 5-stock limit and inserts into the watchlist table."""
@@ -39,6 +60,18 @@ class WatchList:
             conn = get_db_connection()
             cur = conn.cursor()
             
+            # Inserts basic information of the ticker into the parent 'stocks' table first. 
+            # We use the ticker as a placeholder for the company_name.
+            # If the stock is already in the database, ON CONFLICT DO NOTHING safely ignores this.
+            cur.execute(
+                """
+                INSERT INTO stocks (ticker, company_name) 
+                VALUES (%s, %s)
+                ON CONFLICT (ticker) DO NOTHING;
+                """,
+                (ticker, ticker)
+            )
+
             cur.execute(
                 "INSERT INTO watchlist (user_id, ticker) VALUES (%s, %s);", 
                 (self._userID, ticker)
@@ -48,9 +81,9 @@ class WatchList:
             cur.close()
             return {"status": "success", "message": f"{ticker} successfully added to watchlist."}
             
-        except psycopg2.errors.ForeignKeyViolation:
+        except psycopg2.errors.ForeignKeyViolation as e:
             if conn: conn.rollback()
-            return {"status": "error", "message": f"Cannot add {ticker}. It must be viewed/saved to the database first."}
+            return {"status": "error", "message": f"Foreign Key Error: {str(e)}"}
         except psycopg2.errors.UniqueViolation:
             if conn: conn.rollback()
             return {"status": "error", "message": f"{ticker} is already in your watchlist."}

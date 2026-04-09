@@ -8,6 +8,9 @@ interface AuthUser {
   username: string;
   email: string;
   token: string;
+  is_oauth?: boolean;
+  risk_level?: string;
+  favorite_sector?: string;
 }
 
 interface AuthContextType {
@@ -15,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ status: string; message?: string }>;
   register: (username: string, email: string, password: string) => Promise<{ status: string; message?: string }>;
-  googleLogin: (credential: string) => Promise<{ status: string; message?: string }>;
+  googleLogin: (credential: string) => Promise<{ status: string; message?: string; is_new_user?: boolean }>; // updated authcontext interface to account for google new users
   logout: () => void;
 }
 
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (data.status === 'success') {
-      saveUser({ user_id: data.user_id, username: data.username, email: data.email, token: data.token });
+      saveUser({ user_id: data.user_id, username: data.username, email: data.email, token: data.token, is_oauth: true });
     }
     return data;
   }
