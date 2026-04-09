@@ -2,6 +2,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from models.user_management import get_db_connection
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- NEW OOP DOMAIN MODULES ---
@@ -135,6 +136,37 @@ def configure_alert():
 
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+  # 2nd route
+@app.route('/api/watchlist', methods=['GET'])
+def get_watchlist():
+    """Returns the user's watchlist with alert settings."""
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT ticker, alert_enabled, hype_threshold, direction 
+               FROM watchlist WHERE user_id = %s;""",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        
+        watchlist = [
+            {"ticker": r[0], "alert_enabled": r[1], "hype_threshold": r[2], "direction": r[3]}
+            for r in rows
+        ]
+        return jsonify({"status": "success", "watchlist": watchlist}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 # ==========================================
 # 3. USER & AUTH ROUTES (Lance's Domain)
 # ==========================================
@@ -202,4 +234,4 @@ def update_profile():
     return jsonify(result), status_code
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

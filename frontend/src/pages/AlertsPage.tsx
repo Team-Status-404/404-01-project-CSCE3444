@@ -4,7 +4,7 @@ import TopBar from "../components/TopBar";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:5001";
 
 interface WatchlistItem {
   ticker: string;
@@ -36,7 +36,7 @@ export default function AlertsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/watchlist`, {
+      const res = await fetch(`${API_URL}/api/watchlist?user_id=${user?.user_id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

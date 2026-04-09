@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:5001";
 
 // TYPES
 interface AlertModalProps {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = 'http://localhost:5001';
 
 interface AuthUser {
   user_id: number;

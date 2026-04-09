@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 
 // ─── TYPESCRIPT DEFINITIONS ────────────────────────────────────────────────
 interface HypeData {
@@ -24,7 +25,7 @@ interface Alert {
 // ─── LIVE FLASK BACKEND ────────────────────────────────────────────────────
 async function fetchHypeScore(ticker: string): Promise<HypeData> {
   try {
-    const response = await fetch(`http://localhost:5000/api/sentiment/${ticker}`);
+    const response = await fetch(`http://localhost:5001/api/sentiment/${ticker}`);
     if (!response.ok) throw new Error('Network response was not ok');
     
     const data = await response.json();
@@ -104,6 +105,7 @@ export default function HypeMeter() {
   const [loading, setLoading] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [savedAlerts, setSavedAlerts] = useState<Alert[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -164,9 +166,9 @@ export default function HypeMeter() {
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorConf.main, boxShadow: `0 0 8px ${colorConf.glow}` }} />
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>{data.ticker}</span>
         </div>
-        <button onClick={() => setShowAlert(true)} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 8px", fontSize: 12, cursor: "pointer", transition: "0.2s" }}>
+        <button onClick={() => navigate('/alerts')} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 8px", fontSize: 12, cursor: "pointer", transition: "0.2s" }}>
           + Alert
-        </button>
+         </button>
       </div>
 
       {/* Input */}
