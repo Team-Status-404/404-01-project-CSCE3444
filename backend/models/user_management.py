@@ -1,4 +1,5 @@
 import os
+import re
 import datetime
 import bcrypt
 import jwt
@@ -187,14 +188,22 @@ class User:
                 # if exists, log in
                 user_id, username = row
             else:
-                # if new user, auto register
+                # if new user, auto register — ensure the username is unique
                 placeholder_hash = bcrypt.hashpw(os.urandom(32), bcrypt.gensalt()).decode("utf-8")
+                base_name = google_name
+                username = base_name
+                suffix = 1
+                while True:
+                    cur.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+                    if cur.fetchone() is None:
+                        break
+                    username = f"{base_name}{suffix}"
+                    suffix += 1
                 cur.execute(
                     "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id",
-                    (google_name, google_email, placeholder_hash),
+                    (username, google_email, placeholder_hash),
                 )
                 user_id = cur.fetchone()[0]
-                username = google_name
                 conn.commit()
 
             cur.close()
@@ -205,6 +214,7 @@ class User:
                 "username": username,
                 "email": google_email,
                 "token": token,
+                "is_oauth": True,
             }
         except Exception as e:
             if conn:
@@ -217,43 +227,44 @@ class User:
     def reset_password(self) -> Dict[str, Any]:
         """Need a function to reset the user password, please implement this Lance"""
         pass
-    
-    
+
+
     def delete_account(self) -> Dict[str, Any]:
-        """Deletes the user from the database entirely (ON DELETE CASCADE handles watchlist)."""
+        """Deletes the user from the database using user_id (ON DELETE CASCADE applies)."""
         conn = None
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+
             cur.execute("DELETE FROM users WHERE id = %s", (self._userID,))
+
+            if cur.rowcount == 0:
+                return {"status": "error", "message": "No user found"}
+
             conn.commit()
             cur.close()
+
             return {"status": "success", "message": "Account deleted"}
+
         except Exception as e:
             if conn:
                 conn.rollback()
             return {"status": "error", "message": str(e)}
+
         finally:
             if conn:
                 conn.close()
-                
 
-    def updateProfile(self, new_username: str = None, new_email: str = None) -> Dict[str, Any]:
-        """
-        Updates the user's information.
-        """
-        # TODO for Yasas:
-        # 1. Connect to the database using get_db_connection().
-        # 2. Write an UPDATE query targeting the 'users' table where id = self._userID.
-        # 3. You can update the username, the email, or both depending on what the user sends.
-        # 4. If the database update is successful, update the pself._username and self._email.
-        # 5. Catch 'UniqueViolation' errors in case they pick an email that is already taken!
+
+    def updateProfile(
+        self,
+        new_username: str = None,
+        new_email: str = None,
+        new_password: str = None,
+    ) -> Dict[str, Any]:
+        """Updates the user's profile fields (username, email, password)."""
         conn = None
         try:
-            # Ensure there is at least one field to update
-            if new_username is None and new_email is None:
-                return {"status": "error", "message": "No fields to update"}
-
             fields = []
             params = []
 
@@ -265,9 +276,21 @@ class User:
                 fields.append("email = %s")
                 params.append(new_email)
 
-            # Add user ID for WHERE clause
-            params.append(self._userID)
+            if new_password is not None:
+                if len(new_password) < 6:
+                    return {"status": "error", "message": "Password must be at least 6 characters."}
+                if len(new_password) > 10:
+                    return {"status": "error", "message": "Password must be at most 10 characters."}
+                if not re.search(r'[!@#$%^&*()\-_=+\[\]{};\':"\\|,.<>/?`~]', new_password):
+                    return {"status": "error", "message": "Password must contain at least one special character."}
+                hashed = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                fields.append("password = %s")
+                params.append(hashed)
 
+            if not fields:
+                return {"status": "error", "message": "No fields to update"}
+
+            params.append(self._userID)
             query = "UPDATE users SET " + ", ".join(fields) + " WHERE id = %s"
 
             conn = get_db_connection()
@@ -276,7 +299,6 @@ class User:
             conn.commit()
             cur.close()
 
-            # Update the in-memory user object
             if new_username is not None:
                 self._username = new_username
             if new_email is not None:
@@ -291,10 +313,7 @@ class User:
         except errors.UniqueViolation:
             if conn:
                 conn.rollback()
-            return {
-                "status": "error",
-                "message": "Username or email already exists",
-            }
+            return {"status": "error", "message": "Username or email already exists"}
         except Exception as e:
             if conn:
                 conn.rollback()
