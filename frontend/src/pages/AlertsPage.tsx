@@ -4,7 +4,7 @@ import TopBar from "../components/TopBar";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:5001";
+const API_URL = "http://localhost:5000";
 
 interface WatchlistItem {
   ticker: string;
@@ -22,7 +22,7 @@ export default function AlertsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
-  const [editThreshold, setEditThreshold] = useState<number>(75);
+  const [editThreshold, setEditThreshold] = useState<number | string>(75);
   const [editDirection, setEditDirection] = useState<"above" | "below">("above");
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
@@ -76,22 +76,35 @@ export default function AlertsPage() {
 
   async function handleSaveEdit(ticker: string) {
     if (!user) return;
-    if (editThreshold < 1 || editThreshold > 99) { setEditError("Threshold must be between 1 and 99."); return; }
+    
+    // Parse the threshold to a number here
+    const numericThreshold = Number(editThreshold);
+    
+    // Validate the parsed number (Frontend check)
+    if (isNaN(numericThreshold) || numericThreshold < 1 || numericThreshold > 99) { 
+      setEditError("Threshold must be between 1 and 99."); 
+      return; 
+    }
+    
     setSaving(true);
     setEditError(null);
     try {
       const res = await fetch(`${API_URL}/api/alerts`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify({ user_id: user.user_id, ticker, hype_threshold: editThreshold, direction: editDirection }),
+        // FIX: Send numericThreshold instead of editThreshold
+        body: JSON.stringify({ user_id: user.user_id, ticker, hype_threshold: numericThreshold, direction: editDirection }),
       });
       const data = await res.json();
       if (data.status === "success") {
-        setWatchlist((prev) => prev.map((item) => item.ticker === ticker ? { ...item, hype_threshold: editThreshold, direction: editDirection } : item));
+        setWatchlist((prev) => prev.map((item) => item.ticker === ticker ? { ...item, hype_threshold: numericThreshold, direction: editDirection } : item));
         setEditingTicker(null);
         setSuccessMessage(`Alert updated for ${ticker}`);
         setTimeout(() => setSuccessMessage(null), 3000);
-      } else { setEditError(data.message ?? "Failed to save."); }
+      } else { 
+        // This is where it was catching the backend's underscore error!
+        setEditError(data.message ?? "Failed to save."); 
+      }
     } catch { setEditError("Could not reach server."); }
     finally { setSaving(false); }
   }
@@ -169,7 +182,7 @@ export default function AlertsPage() {
                       <p style={{ margin: "0 0 14px", fontWeight: 600, color: "#38bdf8" }}>Editing alert for {item.ticker}</p>
                       <div style={{ marginBottom: 14 }}>
                         <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6 }}>HYPE THRESHOLD (1-99)</label>
-                        <input type="number" min={1} max={99} value={editThreshold} onChange={(e) => { setEditThreshold(Number(e.target.value)); setEditError(null); }} style={{ width: "100%", background: "#1e293b", border: `1px solid ${editError ? "#f87171" : "rgba(148,163,184,0.2)"}`, borderRadius: 8, color: "#fff", padding: "10px 14px", fontSize: 16, outline: "none" }} />
+                        <input type="number" min={1} max={99} value={editThreshold} onChange={(e) => { setEditThreshold(e.target.value); setEditError(null); }} style={{ width: "100%", background: "#1e293b", border: `1px solid ${editError ? "#f87171" : "rgba(148,163,184,0.2)"}`, borderRadius: 8, color: "#fff", padding: "10px 14px", fontSize: 16, outline: "none" }} />
                         {editError && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#f87171" }}>⚠ {editError}</p>}
                       </div>
                       <div style={{ marginBottom: 16 }}>
