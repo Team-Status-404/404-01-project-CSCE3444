@@ -45,6 +45,7 @@ export default function DashboardPage() {
           setError(data.message || 'Failed to load watchlist.');
         }
       } catch (err) {
+        console.error('Error:', err);
         setError('Network error: Could not reach the server.');
       } finally {
         setIsLoading(false);

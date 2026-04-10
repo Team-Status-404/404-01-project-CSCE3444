@@ -57,6 +57,7 @@ export default function MarketsPage() {
         setFeedback({ message: data.message, type: 'error' });
       }
     } catch (err) {
+      console.error('Error:', err);
       setFeedback({ message: 'Network error. Could not add stock.', type: 'error' });
     } finally {
       setAddingTicker(null);
