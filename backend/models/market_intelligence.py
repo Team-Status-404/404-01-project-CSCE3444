@@ -67,10 +67,13 @@ class Stock:
                  self._movingAverage5Day, self._volume, self._marketCap,
                  self._fiftyTwoWeekHigh, self._fiftyTwoWeekLow) = cached_row
                 
-                return {
+                result = {
                     "status": "success", "source": "database_cache", "cached": True,
                     "data": self._get_data_dict()
                 }
+                
+                return self._append_graph_data(result)
+            
         except Exception as e:
             print(f"DEBUG: Stock Cache Read Error: {e}")
         finally:
@@ -128,6 +131,7 @@ class Stock:
         if fresh_data and fresh_data.get("status") == "success":
             self._save_to_db()
             fresh_data["cached"] = False
+            return self._append_graph_data(fresh_data)
 
         return fresh_data
 
@@ -142,6 +146,27 @@ class Stock:
             "fiftyTwoWeekHigh": float(self._fiftyTwoWeekHigh) if self._fiftyTwoWeekHigh else None,
             "fiftyTwoWeekLow": float(self._fiftyTwoWeekLow) if self._fiftyTwoWeekLow else None
         }
+        
+    def _append_graph_data(self, response_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Attaches historical price, sentiment, and divergence flags to the payload."""
+        # Call the existing helper functions at the bottom of the file
+        price_data = get_price_data_and_ma(self._tickerSymbol)
+        sentiment_data = get_5_day_sentiment(self._tickerSymbol)
+        
+        response_dict["data"]["graph_data"] = {
+            "historical_prices": price_data.get("historical_prices", []),
+            "historical_sentiment": sentiment_data.get("historical_sentiment", [0.0] * 5)
+        }
+        
+        if "price_trend_pct" in price_data and "trend_pct" in sentiment_data:
+            response_dict["data"]["divergence_warning_active"] = calculate_divergence_flag(
+                price_data['price_trend_pct'], 
+                sentiment_data['trend_pct']
+            )
+        else:
+            response_dict["data"]["divergence_warning_active"] = False
+            
+        return response_dict
 
     def _save_to_db(self):
         """Internal method to UPSERT the stock data."""
