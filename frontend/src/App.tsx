@@ -20,10 +20,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/markets" element={<ProtectedRoute><MarketsPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      
-      {/* Protected Route + Wrapper */}
       <Route path="/stock/:ticker" element={<ProtectedRoute><StockDetailWrapper /></ProtectedRoute>} />
-      
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
   );
