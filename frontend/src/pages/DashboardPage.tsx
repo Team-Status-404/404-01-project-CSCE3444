@@ -32,7 +32,7 @@ export default function DashboardPage() {
       if (!user) return;
       
       try {
-        const res = await fetch(`http://localhost:5000/api/user/watchlist?user_id=${user.user_id}`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/watchlist?user_id=${user.user_id}`);
         const data = await res.json();
         
         if (data.status === 'success') {

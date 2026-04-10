@@ -25,7 +25,7 @@ interface Alert {
 // ─── LIVE FLASK BACKEND ────────────────────────────────────────────────────
 async function fetchHypeScore(ticker: string): Promise<HypeData> {
   try {
-    const response = await fetch(`http://localhost:5001/api/sentiment/${ticker}`);
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/sentiment/${ticker}`);
     if (!response.ok) throw new Error('Network response was not ok');
     
     const data = await response.json();

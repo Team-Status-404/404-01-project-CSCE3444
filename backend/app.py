@@ -15,7 +15,7 @@ from models.alert_scheduler import start_scheduler
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -27,7 +27,8 @@ vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
 # Start the background alert checker
-scheduler = start_scheduler(sentiment_engine)
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    scheduler = start_scheduler(sentiment_engine)
 
 @app.route('/')
 def home():
@@ -293,4 +294,4 @@ def update_profile():
     return jsonify(result), status_code
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5000)

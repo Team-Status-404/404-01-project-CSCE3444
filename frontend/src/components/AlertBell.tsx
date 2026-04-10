@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = "http://localhost:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // TYPES
 interface AlertModalProps {
@@ -74,7 +74,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
   const data = await res.json();
   
 
-      const data = await res.json();
+     // const data = await res.json();
 
       if (data.status === "success") {
         setSaved(true);
@@ -395,7 +395,7 @@ function AlertModal({ ticker, onClose }: AlertModalProps) {
       </div>
     </div>
   );
-//BELL ICON BUTTON
+}
 
 //BELL ICON BUTTON
 
