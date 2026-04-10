@@ -19,7 +19,7 @@ export default function LoginPage() {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
-  }, []);
+  }, [isAuthenticated, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
