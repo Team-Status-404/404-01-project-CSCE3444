@@ -2,18 +2,20 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from models.user_management import get_db_connection
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- NEW OOP DOMAIN MODULES ---
 from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
+from models.alert_scheduler import start_scheduler
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -24,7 +26,9 @@ CORS(app, origins=["http://localhost:5173"])
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
-
+# Start the background alert checker
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    scheduler = start_scheduler(sentiment_engine)
 
 @app.route('/')
 def home():
@@ -61,16 +65,12 @@ def get_stock_sentiment(ticker):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# 2. PORTFOLIO ROUTES
+# 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
 @app.route('/api/watchlist/add', methods=['POST'])
 def add_to_watchlist(): 
-    """
-        this function is fatter than the previous functions because our python classes 
-        don't know what http or json is, so the route has to handle "upacking" the web request
-        before it can hand it over to the variables
-    """
+   
     """Adds a ticker to a user's watchlist, enforcing the 5-stock limit."""
     data = request.json
     user_id = data.get('user_id')
@@ -88,11 +88,6 @@ def add_to_watchlist():
 
 @app.route('/api/watchlist/remove', methods=['DELETE'])
 def remove_from_watchlist():
-    """
-        this function is fatter than the previous functions because our python classes 
-        don't know what http or json is, so the route has to handle "upacking" the web request
-        before it can hand it over to the variables
-    """
     """Removes a ticker from a user's watchlist."""
     data = request.json
     user_id = data.get('user_id')
@@ -176,6 +171,61 @@ def toggle_alert():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/alerts', methods=['POST'])
+def configure_alert():
+    """Saves a user's hype score alert threshold for a specific ticker."""
+    data = request.json
+    user_id = data.get('user_id')
+    ticker = data.get('ticker')
+    hype_threshold = data.get('hype_threshold')
+    direction = data.get('direction', 'above')
+
+    # Validate inputs
+    if not user_id or not ticker or hype_threshold is None:
+        return jsonify({"status": "error", "message": "Missing user_id, ticker, or hype_threshold"}), 400
+
+    if not isinstance(hype_threshold, int) or not (1 <= hype_threshold <= 99):
+        return jsonify({"status": "error", "message": "hype_threshold must be between 1 and 99"}), 400
+
+    if direction not in ('above', 'below'):
+        return jsonify({"status": "error", "message": "direction must be 'above' or 'below'"}), 400
+
+    alert_manager = Alerts(user_id=user_id, ticker_symbol=ticker)
+    result = alert_manager.configureAlert(hype_threshold, direction)
+
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
+  # 2nd route
+@app.route('/api/watchlist', methods=['GET'])
+def get_watchlist():
+    """Returns the user's watchlist with alert settings."""
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT ticker, alert_enabled, hype_threshold, direction 
+               FROM watchlist WHERE user_id = %s;""",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        
+        watchlist = [
+            {"ticker": r[0], "alert_enabled": r[1], "hype_threshold": r[2], "direction": r[3]}
+            for r in rows
+        ]
+        return jsonify({"status": "success", "watchlist": watchlist}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 # ==========================================
 # 3. USER & AUTH ROUTES (Lance's Domain)
 # ==========================================

@@ -32,7 +32,7 @@ export default function StockDetailPage() {
     setIsAdding(true);
     
     try {
-      const res = await fetch(`http://localhost:5000/api/watchlist/add`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
