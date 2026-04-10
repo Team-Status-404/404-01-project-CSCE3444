@@ -94,6 +94,7 @@ export default function OnboardingPage() {
       
     } catch (err) {
       // This catch block only triggers if the network completely fails or the backend crashes
+      console.error('Error:', err);
       setError('A network error occurred. Please check your connection.');
       setIsSaving(false);
     }

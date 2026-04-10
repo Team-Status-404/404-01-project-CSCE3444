@@ -52,6 +52,7 @@ export default function StockDetailPage() {
         setFeedback({ message: data.message, type: 'error' });
       }
     } catch (err) {
+      console.error('Error:', err);
       setFeedback({ message: 'Network error. Could not add stock.', type: 'error' });
     } finally {
       setIsAdding(false);

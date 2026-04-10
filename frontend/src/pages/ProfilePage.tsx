@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const SPECIAL_CHAR_RE = /[!@#$%^&*()\-_=+\[\]{};':"\\|,.<>/?`~]/;
+  const SPECIAL_CHAR_RE = /[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/;
 
   function validatePassword(pw: string): string | null {
     if (pw.length < 6) return "Password must be at least 6 characters.";
