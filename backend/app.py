@@ -9,6 +9,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
+from models.alert_scheduler import start_scheduler
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
@@ -25,7 +26,9 @@ CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
-
+# Start the background alert checker
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    scheduler = start_scheduler(sentiment_engine)
 
 # home route
 @app.route('/')
@@ -75,7 +78,7 @@ def get_stock_sentiment(ticker):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# 2. PORTFOLIO ROUTES
+# 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
 @app.route('/api/watchlist/add', methods=['POST'])

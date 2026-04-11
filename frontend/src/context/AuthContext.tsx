@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
 const API_URL = 'http://localhost:5000';
@@ -8,6 +8,9 @@ interface AuthUser {
   username: string;
   email: string;
   token: string;
+  is_oauth?: boolean;
+  risk_level?: string;
+  favorite_sector?: string;
 }
 
 interface AuthContextType {
@@ -15,26 +18,26 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ status: string; message?: string }>;
   register: (username: string, email: string, password: string) => Promise<{ status: string; message?: string }>;
-  googleLogin: (credential: string) => Promise<{ status: string; message?: string }>;
+  googleLogin: (credential: string) => Promise<{ status: string; message?: string; is_new_user?: boolean }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  // Restore session from localStorage on mount
-  useEffect(() => {
+  // Restore session from localStorage on mount using lazy initialization
+  const [user, setUser] = useState<AuthUser | null>(() => {
     const stored = localStorage.getItem('stockiq_user');
     if (stored) {
       try {
-        setUser(JSON.parse(stored));
+        return JSON.parse(stored);
       } catch {
         localStorage.removeItem('stockiq_user');
+        return null;
       }
     }
-  }, []);
+    return null;
+  });
 
   function saveUser(data: AuthUser) {
     setUser(data);
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (data.status === 'success') {
-      saveUser({ user_id: data.user_id, username: data.username, email: data.email, token: data.token });
+      saveUser({ user_id: data.user_id, username: data.username, email: data.email, token: data.token, is_oauth: true });
     }
     return data;
   }
@@ -92,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
