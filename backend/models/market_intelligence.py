@@ -1,5 +1,6 @@
 import os
 import requests
+import threading # added for the asynchronous background database saving
 import time
 from curl_cffi import requests as curl_requests
 import psycopg2
@@ -66,10 +67,13 @@ class Stock:
                  self._movingAverage5Day, self._volume, self._marketCap,
                  self._fiftyTwoWeekHigh, self._fiftyTwoWeekLow) = cached_row
                 
-                return {
+                result = {
                     "status": "success", "source": "database_cache", "cached": True,
                     "data": self._get_data_dict()
                 }
+                
+                return self._append_graph_data(result)
+            
         except Exception as e:
             print(f"DEBUG: Stock Cache Read Error: {e}")
         finally:
@@ -127,6 +131,7 @@ class Stock:
         if fresh_data and fresh_data.get("status") == "success":
             self._save_to_db()
             fresh_data["cached"] = False
+            return self._append_graph_data(fresh_data)
 
         return fresh_data
 
@@ -141,6 +146,27 @@ class Stock:
             "fiftyTwoWeekHigh": float(self._fiftyTwoWeekHigh) if self._fiftyTwoWeekHigh else None,
             "fiftyTwoWeekLow": float(self._fiftyTwoWeekLow) if self._fiftyTwoWeekLow else None
         }
+        
+    def _append_graph_data(self, response_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Attaches historical price, sentiment, and divergence flags to the payload."""
+        # Call the existing helper functions at the bottom of the file
+        price_data = get_price_data_and_ma(self._tickerSymbol)
+        sentiment_data = get_5_day_sentiment(self._tickerSymbol)
+        
+        response_dict["data"]["graph_data"] = {
+            "historical_prices": price_data.get("historical_prices", []),
+            "historical_sentiment": sentiment_data.get("historical_sentiment", [0.0] * 5)
+        }
+        
+        if "price_trend_pct" in price_data and "trend_pct" in sentiment_data:
+            response_dict["data"]["divergence_warning_active"] = calculate_divergence_flag(
+                price_data['price_trend_pct'], 
+                sentiment_data['trend_pct']
+            )
+        else:
+            response_dict["data"]["divergence_warning_active"] = False
+            
+        return response_dict
 
     def _save_to_db(self):
         """Internal method to UPSERT the stock data."""
@@ -557,3 +583,86 @@ def get_5_day_sentiment(ticker_symbol: str) -> dict:
     finally:
         if conn is not None:
             conn.close()
+            
+            
+            
+            
+# ==========================================
+# USER DROP-DOWN HELPER FUNCTIONS
+# ==========================================
+def _async_save_tickers_to_db(tickers_data):
+    """Background task to save newly discovered tickers to the database."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        for item in tickers_data:
+            cur.execute("""
+                INSERT INTO stocks (ticker, company_name) 
+                VALUES (%s, %s)
+                ON CONFLICT (ticker) DO NOTHING
+            """, (item['symbol'], item['shortname']))
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"DEBUG: Asynchronously saved {len(tickers_data)} new tickers to database.")
+    except Exception as e:
+        print(f"DEBUG: Background DB Save Error: {e}")
+
+def search_for_tickers(query: str) -> dict:
+    """
+    Cache-aside search logic. Queries Supabase first. 
+    If no matches, queries Yahoo Finance and asynchronously saves results.
+    """
+    search_term = f"%{query}%"
+    conn = None
+    
+    # CACHE-ASIDE: Check Database First
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT ticker, company_name 
+            FROM stocks 
+            WHERE ticker ILIKE %s OR company_name ILIKE %s
+            LIMIT 10
+        """, (search_term, search_term))
+        
+        rows = cur.fetchall()
+        cur.close()
+        
+        if rows:
+            db_results = [{"ticker": r[0], "companyName": r[1]} for r in rows]
+            return {"status": "success", "source": "database", "results": db_results}
+
+    except Exception as e:
+        print(f"DEBUG: Search DB Read Error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    # CACHE MISS: Fetch from Yahoo Finance Search API
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0"
+        headers = {'User-Agent': 'Mozilla/5.0'} 
+        
+        resp = requests.get(url, headers=headers, timeout=5)
+        data = resp.json()
+        
+        quotes = data.get('quotes', [])
+        api_results = []
+        db_save_payload = []
+        
+        for q in quotes:
+            if 'symbol' in q and 'shortname' in q and q.get('quoteType') == 'EQUITY':
+                api_results.append({"ticker": q['symbol'], "companyName": q['shortname']})
+                db_save_payload.append({"symbol": q['symbol'], "shortname": q['shortname']})
+
+        # ASYNCHRONOUS WRITE
+        if db_save_payload:
+            thread = threading.Thread(target=_async_save_tickers_to_db, args=(db_save_payload,))
+            thread.start()
+
+        return {"status": "success", "source": "yfinance_api", "results": api_results}
+
+    except Exception as e:
+        return {"status": "error", "message": f"External search failed: {str(e)}"}

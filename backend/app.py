@@ -6,7 +6,7 @@ from models.user_management import get_db_connection
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -30,6 +30,7 @@ sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to al
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     scheduler = start_scheduler(sentiment_engine)
 
+# home route
 @app.route('/')
 def home():
     return jsonify({"message": "StockIQ Backend is running securely and is connected to Database"})
@@ -37,6 +38,18 @@ def home():
 # ==========================================
 # 1. MARKET DATA ROUTES
 # ==========================================
+@app.route('/api/stocks/search', methods=['GET'])
+def search_stocks():
+    """Route for the frontend search bar autocomplete dropdown."""
+    query = request.args.get('query', '').strip()
+    
+    if not query:
+        return jsonify({"status": "success", "results": []}), 200
+
+    result = search_for_tickers(query)
+    
+    status_code = 200 if result["status"] == "success" else 500
+    return jsonify(result), status_code
 
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker): 
@@ -293,5 +306,6 @@ def update_profile():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+# starts the flask server in development mode
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
