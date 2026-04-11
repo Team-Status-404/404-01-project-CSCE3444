@@ -63,6 +63,7 @@ export default function SearchBar() {
           setResults([]);
         }
       } catch (err) {
+        console.error(err); // show error in terminal
         setError('Network error.');
         setResults([]);
       } finally {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import HypeMeter from '../components/HypeMeter';
+import AlertBell from '../components/AlertBell';
 import { useAuth } from '../context/AuthContext';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -176,6 +177,7 @@ export default function StockDetailPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <h2 style={{ fontSize: '2.5rem', margin: 0 }}>{displayTicker}</h2>
+                  <AlertBell ticker={displayTicker} />
                   <button 
                     onClick={handleAddStock}
                     disabled={isAdding}

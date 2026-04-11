@@ -29,29 +29,33 @@ export default function AlertsPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetchWatchlist();
-  }, [user]);
 
-  async function fetchWatchlist() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/api/watchlist?user_id=${user?.user_id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.token}`,
-        },
-      });
-      if (!res.ok) throw new Error("Failed to load watchlist");
-      const data = await res.json();
-      setWatchlist(data.watchlist ?? []);
-    } catch (err) {
-      setError("Could not load your watchlist. Make sure the backend is running.");
-    } finally {
-      setLoading(false);
+    // function now lives safely within the effect
+    async function fetchWatchlist() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_URL}/api/watchlist?user_id=${user?.user_id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to load watchlist");
+        const data = await res.json();
+        setWatchlist(data.watchlist ?? []);
+      } catch (err) {
+        console.error(err); // show error in terminal
+        setError("Could not load your watchlist. Make sure the backend is running.");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+
+    fetchWatchlist();
+  
+  }, [user]);
 
   async function handleToggleAlert(ticker: string, currentState: boolean) {
     if (!user) return;
