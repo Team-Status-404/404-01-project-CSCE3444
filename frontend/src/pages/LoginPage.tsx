@@ -14,12 +14,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in when visiting this page, redirect to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+useEffect(() => {
+  // Only redirect if they are ALREADY logged in when the page first loads
+  if (isAuthenticated) {
+    navigate('/dashboard', { replace: true });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // <-- The empty array stops it from firing after a new login
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
