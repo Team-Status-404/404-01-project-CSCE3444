@@ -1,19 +1,33 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import StockDetailPage from './pages/StockDetailPage';
 import MarketsPage from './pages/MarketsPage';
-import ProfilePage from './pages/ProfilePage'; // Add this import
+import ProfilePage from './pages/ProfilePage';
+import OnboardingPage from './pages/OnboardingPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import AlertsPage from './pages/AlertsPage';
+
+// wrapper forces StockDetailPage to fully remount
+// every time the ticker in the URL changes (e.g. from the SearchBar)
+function StockDetailWrapper() {
+  const location = useLocation();
+  return <StockDetailPage key={location.pathname} />;
+}
 
 export default function App() {
   return (
     <Routes>
+      
+      <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/markets" element={<MarketsPage />} />       
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/stock/nvda" element={<StockDetailPage />} />  
-      <Route path="/profile" element={<ProfilePage />} />  
+      {/* Add the protected onboarding route */}
+      <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+      <Route path="/markets" element={<ProtectedRoute><MarketsPage /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/stock/:ticker" element={<ProtectedRoute><StockDetailWrapper /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
     </Routes>
   );
 }
