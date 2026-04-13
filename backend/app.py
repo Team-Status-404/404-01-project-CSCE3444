@@ -28,7 +28,7 @@ news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    scheduler = start_scheduler(sentiment_engine)
+    start_scheduler(sentiment_engine)
 
 # home route
 @app.route('/')
