@@ -5,7 +5,7 @@ import bcrypt
 import jwt
 import psycopg2
 from psycopg2 import errors
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from functools import wraps
 from flask import request, jsonify
 from dotenv import load_dotenv
