@@ -10,9 +10,10 @@ Currently, Team 404 is actively supporting the following branches of the StockIQ
 | Older branches   | :x:                |
 
 ## Security Architecture & Scope
-With the recent updates to StockIQ, our security footprint now includes:
+With the ongoing updates to StockIQ for production deployment, our security footprint includes:
 - **Authentication:** Custom email/password authentication (using bcrypt for hashing) and Google OAuth 2.0.
 - **Session Management:** JSON Web Tokens (JWT) using HS256 signatures, valid for 24 hours.
+- **Network Security:** Cross-Origin Resource Sharing (CORS) policies restricting backend access, alongside API rate-limiting on yfinance and NLP endpoints to prevent abuse.
 - **Data Privacy:** User profiles, securely hashed passwords, and associated watchlist/portfolio data.
 
 ### Out of Scope / Accepted Risks
