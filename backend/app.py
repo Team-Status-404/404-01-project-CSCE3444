@@ -240,7 +240,7 @@ def get_watchlist():
         if conn:
             conn.close()
 # ==========================================
-# 3. USER & AUTH ROUTES (Lance's Domain)
+# 3. USER & AUTH ROUTES
 # ==========================================
 
 @app.route('/api/user/register', methods=['POST'])
@@ -305,6 +305,42 @@ def update_profile():
     )
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+
+# ==========================================
+# FORGOT PASSWORD & RESET PASSWORD ROUTES
+# ==========================================
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Endpoint to trigger the password reset email flow."""
+    data = request.json
+    # we'll conduct the user reset by email
+    email = data.get('email')
+
+    # if no email in payload, return an error message
+    if not email:
+        return jsonify({"status": "error", "message": "Missing email address"}), 400
+
+    # generate the secret reset token to allow the user to resest their password
+    result = User.generate_reset_token(email)
+    status_code = 200 if result["status"] == "success" else 500
+    return jsonify(result), status_code
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    """Endpoint that receives the token and apply the new password."""
+    data = request.json
+    token = data.get('token')
+    new_password = data.get('new_password')
+
+    # if no email in payload, return an error message
+    if not token or not new_password:
+        return jsonify({"status": "error", "message": "Missing token or new password"}), 400
+
+    # call the reset password function and return the result
+    result = User.reset_password_with_token(token, new_password)
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
+
 
 # starts the flask server in development mode
 if __name__ == '__main__':
