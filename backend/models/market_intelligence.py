@@ -5,7 +5,6 @@ import time
 from curl_cffi import requests as curl_requests
 import psycopg2
 import yfinance as yf
-from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
