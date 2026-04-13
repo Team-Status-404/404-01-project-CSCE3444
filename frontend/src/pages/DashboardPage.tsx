@@ -91,7 +91,7 @@ export default function DashboardPage() {
       <section className="section-block" style={{ marginTop: '20px' }}>
         <h3 style={{ margin: '0 0 15px 0' }}>My Watchlist</h3>
         
-        {watchlist.length === 0 && !isLoading && !error ? (
+        {watchlist.length === 0 && !error ? (
           <p style={{ color: '#94a3b8' }}>You aren't tracking any stocks yet. Go to Markets to add some!</p>
         ) : (
           <div className="watchlist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
