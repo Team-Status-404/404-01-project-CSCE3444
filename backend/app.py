@@ -1,4 +1,5 @@
 import os
+import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -15,6 +16,8 @@ from models.alert_scheduler import start_scheduler
 load_dotenv()
 
 app = Flask(__name__)
+# Simple in-memory cache for news articles (avoids redundant API calls)
+news_cache = {}
 CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 
 # ==========================================
@@ -59,7 +62,7 @@ def get_stock_data(ticker):
         target_stock = Stock(ticker_symbol=ticker)
         result = target_stock.fetch_stock_data()
         
-        # If the fetch failed (e.g., invalid ticker), return a 404
+        # If the fetch failed (e.g, invalid ticker), return a 404
         if result.get("status") == "error":
             return jsonify(result), 404
             
@@ -74,6 +77,60 @@ def get_stock_sentiment(ticker):
         # Use our globally initialized sentiment engine
         result = sentiment_engine.calculateHypeScore(ticker)
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/api/stocks/<ticker>/news', methods=['GET'])
+def get_stock_news(ticker):
+    """Returns the latest 5-10 news articles for a given ticker."""
+    try:
+        ticker_upper = ticker.upper()
+        api_key = os.getenv("NEWSDATA_API_KEY")
+        
+        if not api_key:
+            return jsonify({"status": "error", "message": "News API key not configured"}), 500
+
+        # In-memory cache — avoids duplicate API calls within 5 minutes
+        cache_key = f"news_{ticker_upper}"
+        cached = news_cache.get(cache_key)
+        
+        if cached:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": cached, "cached": True}), 200
+
+        # Fetch from NewsData API
+        url = f"https://newsdata.io/api/1/latest?apikey={api_key}&q={ticker_upper}&language=en"
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 429:
+            return jsonify({"status": "error", "message": "News API rate limit reached. Try again shortly."}), 429
+        
+        if response.status_code != 200:
+            return jsonify({"status": "error", "message": "Failed to fetch news"}), 502
+
+        results = response.json().get('results', [])
+        
+        if not results:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": [], "cached": False}), 200
+
+        # Format articles, take up to 10
+        articles = []
+        for art in results[:10]:
+            articles.append({
+                "article_id": art.get("article_id", ""),
+                "headline": art.get("title", "No title"),
+                "source": art.get("source_id", "Unknown"),
+                "published_at": art.get("pubDate", ""),
+                "url": art.get("link", "#"),
+                "sentiment_score": sentiment_engine._vaderEngine.polarity_scores(
+                    f"{art.get('title', '')} {art.get('description', '')}"
+                )['compound']
+            })
+
+        # Save to in-memory cache
+        news_cache[cache_key] = articles
+
+        return jsonify({"status": "success", "ticker": ticker_upper, "articles": articles, "cached": False}), 200
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
