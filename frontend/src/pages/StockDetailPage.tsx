@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import HypeMeter from '../components/HypeMeter';
+import NewsFeed from '../components/NewsFeed';
 import AlertBell from '../components/AlertBell';
 import { useAuth } from '../context/AuthContext';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -290,19 +291,7 @@ export default function StockDetailPage() {
             </div>
           </article>
 
-          <article className="card info-card" style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: '20px', margin: 0 }}>Recent News</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '15px', lineHeight: '1.4' }}>{stockData?.companyName || displayTicker} announces strategic market expansion.</p>
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>Reuters • 2h ago</span>
-              </div>
-              <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '15px', lineHeight: '1.4' }}>Why Wall Street analysts are adjusting targets for {displayTicker}.</p>
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>CNBC • 4h ago</span>
-              </div>
-            </div>
-          </article>
+          <NewsFeed ticker={displayTicker} />
         </div>
       </section>
     </Layout>
