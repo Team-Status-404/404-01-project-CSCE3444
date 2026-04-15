@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import InfoTooltip from "./InfoTooltip";
+import { TOOLTIP_COPY } from "../constants/tooltipCopy";
 
 // ─── TYPESCRIPT DEFINITIONS ────────────────────────────────────────────────
 interface HypeData {
@@ -127,6 +129,10 @@ export default function HypeMeter({ initialTicker = "NVDA" }: { initialTicker?: 
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorConf.main, boxShadow: `0 0 8px ${colorConf.glow}` }} />
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>{data.ticker}</span>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Hype Score</span>
+          <InfoTooltip content={TOOLTIP_COPY.HYPE_SCORE} id="tooltip-hype-score" />
+        </div>
       </div>
 
       {/* Input */}
@@ -166,7 +172,10 @@ export default function HypeMeter({ initialTicker = "NVDA" }: { initialTicker?: 
       {/* Footer Stats */}
       <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #1e293b", paddingTop: 15, marginTop: 10 }}>
         <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Sentiment</div>
+          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+            Sentiment
+            <InfoTooltip content={TOOLTIP_COPY.NLP_TAGS} id="tooltip-nlp-tags" />
+          </div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.sentiment}</div>
         </div>
         <div style={{ width: 1, background: "#1e293b" }} />
