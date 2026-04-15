@@ -227,9 +227,108 @@ class User:
             if conn:
                 conn.close()
 
-    def reset_password(self) -> Dict[str, Any]:
-        """Need a function to reset the user password, please implement this Lance"""
-        pass
+    @classmethod
+    def generate_reset_token(cls, email: str) -> Dict[str, Any]:
+        """Generates a secure reset token for the given email and saves it to the DB."""
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # 1. Check if user exists
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+
+            if user:
+                # 2. Generate token and expiration
+                reset_token = secrets.token_urlsafe(32)
+                expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+                # 3. Save to database
+                cur.execute(
+                    """
+                    UPDATE users 
+                    SET reset_token = %s, reset_token_expires_at = %s 
+                    WHERE email = %s
+                    """,
+                    (reset_token, expires_at, email)
+                )
+                conn.commit()
+
+                # 4. Email Dispatch Simulation (Replace with actual email logic later)
+                # Using your localhost frontend port for testing
+                reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+                print(f"*** SIMULATED EMAIL TO {email} ***\nClick to reset: {reset_link}")
+
+            # Always return a generic success message to prevent email enumeration
+            return {
+                "status": "success", 
+                "message": "If that email is in our system, a reset link has been sent."
+            }
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            if conn:
+                cur.close()
+                conn.close()
+
+    @classmethod
+    def reset_password_with_token(cls, token: str, new_password: str) -> Dict[str, Any]:
+        """Validates token and updates the password."""
+        conn = None
+        try:
+            # 1. Validate password strength (matches existing updateProfile constraints)
+            if len(new_password) < 8: 
+                return {"status": "error", "message": "Password must be at least 8 characters."}
+            if len(new_password) > 72:  # Set to bcrypt's maximum byte limit
+                return {"status": "error", "message": "Password must be at most 72 characters."}
+            if not re.search(r'[!@#$%^&*()\-_=+\[\]{};\':"\\|,.<>/?`~]', new_password):
+                return {"status": "error", "message": "Password must contain at least one special character."}
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # 2. Validate token existence and check expiration
+            current_time = datetime.now(timezone.utc)
+            cur.execute(
+                """
+                SELECT id FROM users 
+                WHERE reset_token = %s AND reset_token_expires_at > %s
+                """,
+                (token, current_time)
+            )
+            user = cur.fetchone()
+
+            if not user:
+                return {"status": "error", "message": "Invalid or expired token"}
+
+            # 3. Securely encrypt the new password
+            hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+            # 4. Update the database and clear the token
+            cur.execute(
+                """
+                UPDATE users 
+                SET password = %s, reset_token = NULL, reset_token_expires_at = NULL 
+                WHERE id = %s
+                """,
+                (hashed_password, user[0])
+            )
+            conn.commit()
+
+            return {"status": "success", "message": "Password has been successfully reset."}
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            if conn:
+                cur.close()
+                conn.close()
 
 
     def delete_account(self) -> Dict[str, Any]:
