@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Layout from "../components/Layout";
 import TopBar from "../components/TopBar";
+import InfoTooltip from "../components/InfoTooltip";
+import { TOOLTIP_COPY } from "../constants/tooltipCopy";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -287,7 +289,10 @@ export default function ProfilePage() {
 
       <section className="form-layout">
         <article className="card">
-          <h2>Edit Profile</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+            <h2 style={{ margin: 0 }}>Edit Profile</h2>
+            <InfoTooltip content={TOOLTIP_COPY.PROFILE_USERNAME} />
+          </div>
           <form className="settings-form" onSubmit={handleSave}>
             <label>
               Full Name
@@ -328,7 +333,10 @@ export default function ProfilePage() {
               </label>
             )}
             <label>
-              New Password
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span>New Password</span>
+                <InfoTooltip content={TOOLTIP_COPY.PROFILE_PASSWORD} />
+              </div>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <input
                   type={showNewPassword ? "text" : "password"}
@@ -410,7 +418,10 @@ export default function ProfilePage() {
             {errorMessage && <p className="negative-text">{errorMessage}</p>}
           </form>
           <hr style={{ margin: "1.5rem 0" }} />
-          <h3>Danger Zone</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+            <h3 style={{ margin: 0 }}>Danger Zone</h3>
+            <InfoTooltip content={TOOLTIP_COPY.DANGER_ZONE} />
+          </div>
           <button
             type="button"
             className="danger-button"
