@@ -6,10 +6,12 @@ export const TOOLTIP_COPY = {
   // ── Proprietary metrics (UC-14 FR-26) ──────────────────────────────────
   HYPE_SCORE:
     "A 0–100 score measuring how much buzz a stock is generating from news and social media right now. Higher scores mean more market attention.",
+  HYPE_SENTIMENT:
+    "An AI-driven overall sentiment reading that factors in price momentum, trading activity, and media coverage. It reflects the combined market mood — not just what people are saying.",
   DIVERGENCE_WARNING:
     "Triggered when the price trend and sentiment trend move in opposite directions by more than 20% — a signal that the market narrative may be disconnecting from actual price action.",
   NLP_TAGS:
-    "Sentiment label (Positive, Neutral, or Negative) automatically assigned by our NLP engine after scanning recent news headlines and social posts about this stock.",
+    "Sentiment label (Positive, Neutral, or Negative) extracted directly from the text of recent news headlines and social posts using Natural Language Processing.",
 
   // ── Navigation & Search ─────────────────────────────────────────────────
   SEARCH_BAR:

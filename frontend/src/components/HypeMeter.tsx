@@ -174,7 +174,7 @@ export default function HypeMeter({ initialTicker = "NVDA" }: { initialTicker?: 
         <div style={{ textAlign: "center", flex: 1 }}>
           <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
             Sentiment
-            <InfoTooltip content={TOOLTIP_COPY.NLP_TAGS} id="tooltip-nlp-tags" />
+            <InfoTooltip content={TOOLTIP_COPY.HYPE_SENTIMENT} id="tooltip-hype-sentiment" />
           </div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.sentiment}</div>
         </div>
