@@ -104,9 +104,7 @@ def summarize_article():
     content = text if text else f"Article URL: {url}"
 
     prompt = (
-        "You are a financial analyst assistant. Summarize the following news article in exactly "
-        "2-3 sentences, focusing strictly on the financial impact, market implications, and what "
-        "this means for investors. Be concise and data-driven."
+        "You are a financial analyst assistant. Summarize the following news article in exactly 2-3 sentences, focusing strictly on the financial impact, market implications, and what this means for investors. Be concise and data-driven."
         f"Article: {content[:3000]} Financial Summary:"
     )
 
