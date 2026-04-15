@@ -228,15 +228,14 @@ class Stock:
             return {"status": "error", "message": str(e)}
 
 class NewsArticle:
-    def __init__(self, article_id: str, headline: str, publish_date: str, source: str, sentiment_score: float):
+    def __init__(self, article_id: str, headline: str, publish_date: str, source: str, sentiment_score: float, url: str = '', description: str = ''):
         self._articleID: str = article_id
         self._headline: str = headline
         self._publishDate: str = publish_date
         self._source: str = source
         self._sentimentScore: float = sentiment_score
-
-    def generateAISummary(self) -> str:
-        pass
+        self._url: str = url
+        self._description: str = description
 
 
 class SentimentAnalyzer:
@@ -319,7 +318,9 @@ class SentimentAnalyzer:
                     headline=art.get('title', ''),
                     publish_date=art.get('pubDate', ''),
                     source=art.get('source_id', 'NewsData'),
-                    sentiment_score=score
+                    sentiment_score=score,
+                    url=art.get('link', ''),
+                    description=art.get('description', ''),
                 ))
                 
             return (total_compound / volume) if volume > 0 else 0.0, volume
@@ -471,14 +472,30 @@ class SentimentAnalyzer:
             "hype_score": hype_score,
             "tag": tag,
             "metrics": {
-                "social_volume": chatter_vol, 
+                "social_volume": chatter_vol,
                 "news_volume": news_vol,
                 "raw_sentiment": round(final_compound, 4)
             },
             "cached": False
         }
-        
-        
+
+    def get_articles(self, ticker: str) -> List[Dict[str, Any]]:
+        """Fetches and returns serializable news articles for a given ticker."""
+        self._get_news_sentiment(ticker)
+        return [
+            {
+                "article_id": a._articleID,
+                "headline": a._headline,
+                "publish_date": a._publishDate,
+                "source": a._source,
+                "sentiment_score": round(a._sentimentScore, 4),
+                "url": a._url,
+                "description": a._description,
+            }
+            for a in self.articles
+        ]
+
+
 """ Dashboard helper functions for the Watchlist class
     Even though the functions below serve the Watchlist class 
     they belong in this file because of "Sepration of Concerns".
