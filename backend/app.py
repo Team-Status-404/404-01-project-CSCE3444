@@ -1,5 +1,7 @@
 import os
-from flask import Flask, jsonify, request
+import json
+import time as time_module
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from models.user_management import get_db_connection
@@ -127,6 +129,87 @@ def get_news(ticker):
         return jsonify({"status": "success", "articles": articles}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
+# UC-09: REAL-TIME PRICE ROUTES (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/<ticker>/price', methods=['GET'])
+def get_live_price(ticker):
+    """
+    UC-09 | FR-10: Returns ONLY the current trading price for a stock.
+    Much faster than /api/stock/<ticker> since it skips sentiment and graphs.
+    Performance target: respond within 2.0 seconds (including cache).
+    """
+    try:
+        target_stock = Stock(ticker_symbol=ticker)
+        result = target_stock.fetchLivePrice()
+
+        if result.get("status") == "error":
+            return jsonify(result), 404
+
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/stocks/<ticker>/stream', methods=['GET'])
+def stream_live_price(ticker):
+    """
+    UC-09 | SSE endpoint: Streams live price updates to connected clients.
+    Sends a new price event every 10 seconds.
+    The frontend connects with: const eventSource = new EventSource('/api/stocks/AAPL/stream')
+    """
+    def generate_price_stream(ticker_symbol):
+        """Generator function that yields SSE-formatted price events."""
+        while True:
+            try:
+                target_stock = Stock(ticker_symbol=ticker_symbol)
+                result = target_stock.fetchLivePrice()
+
+                if result.get("status") == "success":
+                    event_data = {
+                        "ticker": result["data"]["ticker"],
+                        "currentPrice": result["data"]["currentPrice"],
+                        "companyName": result["data"]["companyName"],
+                        "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "status": "live"
+                    }
+                else:
+                    # If fetch failed, send a stale status so frontend shows fallback UI
+                    event_data = {
+                        "ticker": ticker_symbol.upper(),
+                        "currentPrice": None,
+                        "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "status": "stale"
+                    }
+
+                # SSE format: "data: {json}\n\n"
+                yield f"data: {json.dumps(event_data)}\n\n"
+
+            except Exception as e:
+                # Send error event so frontend can show "Price Stale" or "Market Closed" UI
+                error_data = {
+                    "ticker": ticker_symbol.upper(),
+                    "currentPrice": None,
+                    "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "status": "error",
+                    "message": str(e)
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+
+            # Wait 10 seconds before sending next update
+            time_module.sleep(10)
+
+    return Response(
+        generate_price_stream(ticker),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'  # Prevents Nginx from buffering SSE
+        }
+    )
 
 # ==========================================
 # 2. PORTFOLIO ROUTES. (Krish's Route)
