@@ -7,6 +7,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from models.user_management import get_db_connection
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
 from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
@@ -34,6 +35,14 @@ sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to al
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     start_scheduler(sentiment_engine)
+
+# Configure Gemini AI for the article summarizer
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+gemini_client = None
+gemini_model = None
+if gemini_api_key:
+    gemini_client = genai.Client(api_key=gemini_api_key)
+    gemini_model = 'gemini-2.5-flash'
 
 # home route
 @app.route('/')
@@ -133,6 +142,48 @@ def get_stock_news(ticker):
 
         return jsonify({"status": "success", "ticker": ticker_upper, "articles": articles, "cached": False}), 200
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/news/summarize', methods=['POST'])
+def summarize_article():
+    """Accepts article text or URL and returns a 2-3 sentence AI financial summary via Gemini.
+       Also will be using gemini-2.5-flash, since 2.0 will be deprecated in a bit"""
+    if not gemini_client or not gemini_model:
+        return jsonify({"status": "error", "message": "AI summarizer is not configured on this server."}), 503
+
+    data = request.json or {}
+    text = data.get('text', '').strip()
+    url = data.get('url', '').strip()
+
+    if not text and not url:
+        return jsonify({"status": "error", "message": "Missing text or url in request body."}), 400
+
+    content = text if text else f"Article URL: {url}"
+
+    prompt = (
+        "You are a financial analyst assistant. Summarize the following news article in exactly 2-3 sentences, focusing strictly on the financial impact, market implications, and what this means for investors. Be concise and data-driven."
+        f"Article: {content[:3000]} Financial Summary:"
+    )
+
+    try:
+        response = gemini_client.models.generate_content(
+            model=gemini_model,
+            contents=prompt,
+        )
+        summary = response.text.strip()
+        return jsonify({"status": "success", "summary": summary}), 200
+    except Exception as e:
+        print(f"DEBUG: Gemini API error: {e}")
+        return jsonify({"status": "error", "message": "Failed to generate AI summary. Please try again."}), 500
+
+@app.route('/api/news/<ticker>', methods=['GET'])
+def get_news(ticker):
+    """Returns recent news articles for a given ticker."""
+    try:
+        articles = sentiment_engine.get_articles(ticker.upper())
+        return jsonify({"status": "success", "articles": articles}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
