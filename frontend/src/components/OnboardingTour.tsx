@@ -68,7 +68,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     title: 'Hype Score Alerts',
     description: TOOLTIP_COPY.SET_ALERT,
-    location: 'Use the 🔔 Set Alert button on any stock detail page. Manage all alerts under the Alerts page in the sidebar.',
+    location: 'Use the 🔔 Set Alert button on any stock detail page. Manage all alerts under the Alerts page by clicking the bell icon in the top right corner of the navigation bar.',
     icon: '🔔',
   },
 ];
