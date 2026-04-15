@@ -507,4 +507,29 @@ input {
   }
 
 }
- 
+
+/* ─── Tippy.js dark theme for StockIQ (UC-14) ──────────────────────────── */
+.tippy-box[data-theme~='stockiq'] {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.tippy-box[data-theme~='stockiq'] .tippy-content {
+  padding: 8px 12px;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='top'] > .tippy-arrow::before {
+  border-top-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='bottom'] > .tippy-arrow::before {
+  border-bottom-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='left'] > .tippy-arrow::before {
+  border-left-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='right'] > .tippy-arrow::before {
+  border-right-color: #1e293b;
+}
