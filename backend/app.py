@@ -292,6 +292,35 @@ def delete_account():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/user/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """Returns the authenticated user's profile including onboarding status."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT username, email, has_completed_onboarding FROM users WHERE id = %s",
+            (request.current_user_id,)
+        )
+        row = cur.fetchone()
+        cur.close()
+        if row is None:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        username, email, has_completed_onboarding = row
+        return jsonify({
+            "status": "success",
+            "username": username,
+            "email": email,
+            "has_completed_onboarding": has_completed_onboarding,
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 @app.route('/api/user/profile', methods=['PUT'])
 @token_required
 def update_profile():
@@ -305,6 +334,29 @@ def update_profile():
     )
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+
+@app.route('/api/user/onboarding', methods=['PATCH'])
+@token_required
+def complete_onboarding():
+    """Marks the interactive tour as completed for the authenticated user."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET has_completed_onboarding = TRUE WHERE id = %s",
+            (request.current_user_id,)
+        )
+        conn.commit()
+        cur.close()
+        return jsonify({"status": "success", "message": "Onboarding tour marked as completed"}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # starts the flask server in development mode
 if __name__ == '__main__':
