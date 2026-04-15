@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
@@ -7,6 +7,8 @@ import NewsFeed from '../components/NewsFeed';
 import AlertBell from '../components/AlertBell';
 import { useAuth } from '../context/AuthContext';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface StockData {
   ticker: string;
@@ -39,16 +41,26 @@ export default function StockDetailPage() {
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
+  // ==========================================
+  // UC-09: LIVE PRICE STATE (Jeel Patel - Sprint 3)
+  // ==========================================
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
+  const [priceStatus, setPriceStatus] = useState<'live' | 'stale' | 'error'>('live');
+  const prevPriceRef = useRef<number | null>(null);
+
   // Fetch all stock data (including the new graph arrays) from the backend
   useEffect(() => {
     setLoading(true);
     setPageError(null);
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/stock/${displayTicker}`)
+    fetch(`${API_BASE}/api/stock/${displayTicker}`)
       .then((res) => res.json())
       .then((result) => {
         if (result.status === 'success') {
           setStockData(result.data);
+          setLivePrice(result.data.currentPrice);
+          prevPriceRef.current = result.data.currentPrice;
         } else {
           setPageError(result.message || 'Could not find that ticker.');
         }
@@ -57,13 +69,60 @@ export default function StockDetailPage() {
       .finally(() => setLoading(false));
   }, [displayTicker]);
 
+  // ==========================================
+  // UC-09: SSE STREAM CONNECTION (Jeel Patel - Sprint 3)
+  // Connects to the backend SSE endpoint and listens for
+  // live price updates. Triggers green/red flash animation
+  // when the price changes. Auto-reconnects if connection drops.
+  // ==========================================
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/api/stocks/${displayTicker}/stream`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.status === 'live' && data.currentPrice != null) {
+          const newPrice = data.currentPrice;
+          setPriceStatus('live');
+
+          // Trigger green/red flash animation by comparing with previous price
+          if (prevPriceRef.current !== null && newPrice !== prevPriceRef.current) {
+            setPriceFlash(newPrice > prevPriceRef.current ? 'up' : 'down');
+            // Remove flash class after 1 second so it can re-trigger
+            setTimeout(() => setPriceFlash(null), 1000);
+          }
+
+          prevPriceRef.current = newPrice;
+          setLivePrice(newPrice);
+        } else if (data.status === 'stale') {
+          setPriceStatus('stale');
+        } else if (data.status === 'error') {
+          setPriceStatus('error');
+        }
+      } catch (err) {
+        console.error('SSE parse error:', err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      setPriceStatus('stale');
+      // EventSource will auto-reconnect by default
+    };
+
+    // Cleanup: close the SSE connection when the user leaves this page
+    return () => {
+      eventSource.close();
+    };
+  }, [displayTicker]);
+
   // Handle adding the stock to the user's watchlist
   const handleAddStock = async () => {
     if (!user) return;
     setIsAdding(true);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/add`, {
+      const res = await fetch(`${API_BASE}/api/watchlist/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,6 +158,26 @@ export default function StockDetailPage() {
         sentiment: stockData.graph_data!.historical_sentiment[index]
       })) 
     : [];
+
+  // ==========================================
+  // UC-09: HELPER — Get the display price and flash style
+  // ==========================================
+  const displayPrice = livePrice ?? stockData?.currentPrice ?? null;
+
+  const getPriceStyle = (): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      fontSize: '2.5rem',
+      display: 'block',
+      transition: 'color 0.3s ease',
+    };
+
+    if (priceFlash === 'up') {
+      return { ...base, color: '#4ade80' }; // green flash
+    } else if (priceFlash === 'down') {
+      return { ...base, color: '#ef4444' }; // red flash
+    }
+    return base;
+  };
 
   if (loading) {
     return (
@@ -210,10 +289,48 @@ export default function StockDetailPage() {
                   </span>
                 )}
               </div>
+
+              {/* UC-09: LIVE PRICE DISPLAY WITH FLASH ANIMATION */}
               <div style={{ textAlign: 'right' }}>
-                <strong style={{ fontSize: '2.5rem', display: 'block' }}>
-                  {stockData?.currentPrice ? `$${stockData.currentPrice.toFixed(2)}` : 'N/A'}
+                <strong style={getPriceStyle()}>
+                  {displayPrice ? `$${displayPrice.toFixed(2)}` : 'N/A'}
                 </strong>
+
+                {/* UC-09: Live/Stale Status Indicator */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
+                  {priceStatus === 'live' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#4ade80',
+                        display: 'inline-block',
+                        animation: 'pulse 2s infinite'
+                      }} />
+                      <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 'bold' }}>LIVE</span>
+                    </>
+                  )}
+                  {priceStatus === 'stale' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#f59e0b',
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 'bold' }}>Price Stale</span>
+                    </>
+                  )}
+                  {priceStatus === 'error' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#ef4444',
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 'bold' }}>Market Closed</span>
+                    </>
+                  )}
+                </div>
+
                 {stockData?.movingAverage5Day && (
                   <span style={{ color: '#94a3b8', fontSize: '0.95rem' }}>
                     5-Day MA: <strong style={{ color: '#38bdf8' }}>${stockData.movingAverage5Day.toFixed(2)}</strong>
@@ -294,6 +411,15 @@ export default function StockDetailPage() {
           <NewsFeed ticker={displayTicker} />
         </div>
       </section>
+
+      {/* UC-09: CSS Animation for the pulsing green LIVE dot */}
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.4; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </Layout>
   );
 }
