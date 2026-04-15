@@ -25,6 +25,24 @@ useEffect(() => {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    // --- FRONTEND PASSWORD VALIDATION (Only on Sign Up) ---
+    if (isSignUp) {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters.');
+        return; // Stop the submission
+      }
+      if (password.length > 72) {
+        setError('Password must be at most 72 characters.');
+        return; // Stop the submission
+      }
+      // Regex check for at least one special character
+      if (!/[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/.test(password)) {
+        setError('Password must contain at least one special character.');
+        return; // Stop the submission
+      }
+    }
+
     setLoading(true);
 
     try {

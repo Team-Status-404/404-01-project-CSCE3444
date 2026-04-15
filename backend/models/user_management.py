@@ -86,6 +86,14 @@ class User:
         Registers a new user in the database.
         Usage: User.register("david_o", "david@test.com", "Password123")
         """
+        # --- PASSWORD SECURITY STANDARDS CHECK ---
+        if len(password_raw) < 8:
+            return {"status": "error", "message": "Password must be at least 8 characters."}
+        if len(password_raw) > 72:
+            return {"status": "error", "message": "Password must be at most 72 characters."}
+        if not re.search(r'[!@#$%^&*()\-_=+\[\]{};\':"\\|,.<>/?`~]', password_raw):
+            return {"status": "error", "message": "Password must contain at least one special character."}
+        
         #hash w/ bcrypt
         password_hash = bcrypt.hashpw(password_raw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
