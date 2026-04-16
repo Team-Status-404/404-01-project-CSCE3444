@@ -18,36 +18,39 @@ export default function LoginPage() {
   // Check if we were redirected here with a success message
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
-useEffect(() => {
-  // Only redirect if they are ALREADY logged in when the page first loads
-  if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []); // <-- The empty array stops it from firing after a new login
+  useEffect(() => {
+    // Only redirect if they are ALREADY logged in when the page first loads
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // <-- The empty array stops it from firing after a new login
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccessMessage(''); // Clears the success message on submit
+    setLoading(true);
 
     // --- FRONTEND PASSWORD VALIDATION (Only on Sign Up) ---
     if (isSignUp) {
       if (password.length < 8) {
         setError('Password must be at least 8 characters.');
-        return; // Stop the submission
+        setLoading(false); // Make sure to stop loading if we hit an error
+        return; 
       }
       if (password.length > 72) {
         setError('Password must be at most 72 characters.');
-        return; // Stop the submission
+        setLoading(false);
+        return; 
       }
       // Regex check for at least one special character
       if (!/[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/.test(password)) {
         setError('Password must contain at least one special character.');
-        return; // Stop the submission
+        setLoading(false);
+        return; 
       }
     }
-
-    setLoading(true);
 
     try {
       const result = isSignUp
@@ -111,6 +114,7 @@ useEffect(() => {
         <form className="login-form" onSubmit={handleSubmit}>
           {/* Display success message if redirected from reset password */}
           {successMessage && <div className="form-success" style={{ color: 'green', marginBottom: '10px' }}>{successMessage}</div>}
+          
           {isSignUp && (
             <label>
               Username
