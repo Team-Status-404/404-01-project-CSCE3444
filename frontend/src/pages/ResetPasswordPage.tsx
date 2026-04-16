@@ -11,6 +11,14 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // --- REAL-TIME VALIDATION CHECKS ---
+  const hasMinLength = newPassword.length >= 8 && newPassword.length <= 72;
+  const hasSpecialChar = /[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/.test(newPassword);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  
+  // The form is only valid if all three conditions are true
+  const isFormValid = hasMinLength && hasSpecialChar && passwordsMatch;
+
   // If there's no token in the URL, block the view
   if (!token) {
     return (
@@ -30,18 +38,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    // Client-side validation matching backend constraints
-    if (newPassword !== confirmPassword) {
-      return setError('Passwords do not match.');
-    }
-    if (newPassword.length < 8) {
-      return setError('Password must be at least 8 characters.');
-    }
-    if (newPassword.length > 72) {
-      return setError('Password must be at most 72 characters.');
-    }
-    if (!/[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/.test(newPassword)) {
-      return setError('Password must contain at least one special character.');
+    // Backup client-side validation just in case they bypass the disabled button
+    if (!isFormValid) {
+      return setError('Please ensure all password requirements are met.');
     }
 
     setLoading(true);
@@ -88,6 +87,16 @@ export default function ResetPasswordPage() {
             />
           </label>
 
+          {/* DYNAMIC CHECKLIST FOR NEW PASSWORD */}
+          <ul style={{ fontSize: '0.85rem', paddingLeft: '20px', marginTop: '-10px', marginBottom: '15px', listStyleType: 'none', marginLeft: '0' }}>
+            <li style={{ color: hasMinLength ? 'green' : '#888' }}>
+              {hasMinLength ? '✓' : '○'} 8-72 characters
+            </li>
+            <li style={{ color: hasSpecialChar ? 'green' : '#888' }}>
+              {hasSpecialChar ? '✓' : '○'} At least 1 special character
+            </li>
+          </ul>
+
           <label>
             Confirm Password
             <input
@@ -99,9 +108,23 @@ export default function ResetPasswordPage() {
             />
           </label>
 
+          {/* DYNAMIC MATCH INDICATOR */}
+          {/* Only show this text if they have actually started typing in the confirm box */}
+          {confirmPassword.length > 0 && (
+            <div style={{ fontSize: '0.85rem', marginTop: '-10px', marginBottom: '15px', color: passwordsMatch ? 'green' : 'red' }}>
+              {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+            </div>
+          )}
+
           {error && <p className="form-error" style={{ color: 'red' }}>{error}</p>}
 
-          <button type="submit" className="primary-button full-width" disabled={loading}>
+          {/* BUTTON IS DISABLED UNTIL ALL CHECKS PASS */}
+          <button 
+            type="submit" 
+            className="primary-button full-width" 
+            disabled={loading || !isFormValid}
+            style={{ opacity: (!isFormValid || loading) ? 0.6 : 1, cursor: (!isFormValid || loading) ? 'not-allowed' : 'pointer' }}
+          >
             {loading ? 'Saving...' : 'Confirm New Password'}
           </button>
         </form>
