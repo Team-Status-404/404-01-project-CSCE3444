@@ -68,20 +68,27 @@ export default function NewsFeed({ ticker }: NewsFeedProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    const fetchNews = async () => {
+      setLoading(true);
+      setError(null);
 
-    fetch(`${API_URL}/api/stocks/${ticker}/news`)
-      .then((res) => res.json())
-      .then((data) => {
+      try {
+        const res = await fetch(`${API_URL}/api/stocks/${ticker}/news`);
+        const data = await res.json();
+
         if (data.status === 'success') {
           setArticles(data.articles);
         } else {
           setError(data.message || 'Could not load news.');
         }
-      })
-      .catch(() => setError('Network error — could not reach the server.'))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        setError('Network error — could not reach the server.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
   }, [ticker]);
 
   return (

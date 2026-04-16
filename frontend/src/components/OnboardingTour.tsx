@@ -194,7 +194,7 @@ export default function OnboardingTour({ onComplete, isRevisit = false }: Onboar
       setModalLayout(computeLayout(currentStep.targetSelector));
     }, 150);
     return () => clearTimeout(timer);
-  }, [step, location.pathname]);
+  }, [step, location.pathname, currentStep.targetSelector]);
 
   async function markComplete() {
     if (dismissing) return;
