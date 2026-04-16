@@ -83,9 +83,10 @@ const TOUR_STEPS: TourStep[] = [
 
 interface OnboardingTourProps {
   onComplete: () => void;
+  isRevisit?: boolean;
 }
 
-export default function OnboardingTour({ onComplete }: OnboardingTourProps) {
+export default function OnboardingTour({ onComplete, isRevisit = false }: OnboardingTourProps) {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [dismissing, setDismissing] = useState(false);
@@ -96,13 +97,16 @@ export default function OnboardingTour({ onComplete }: OnboardingTourProps) {
   async function markComplete() {
     if (dismissing) return;
     setDismissing(true);
-    try {
-      await fetch(`${API_URL}/api/user/onboarding`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
-    } catch {
-      // fail silently — don't block the user from dismissing
+    // On revisit, skip the PATCH so the backend flag stays clean
+    if (!isRevisit) {
+      try {
+        await fetch(`${API_URL}/api/user/onboarding`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${user?.token}` },
+        });
+      } catch {
+        // fail silently — don't block the user from dismissing
+      }
     }
     onComplete();
   }

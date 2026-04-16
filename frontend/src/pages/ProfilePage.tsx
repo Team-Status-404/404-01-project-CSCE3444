@@ -3,10 +3,12 @@ import Layout from "../components/Layout";
 import TopBar from "../components/TopBar";
 import InfoTooltip from "../components/InfoTooltip";
 import { TOOLTIP_COPY } from "../constants/tooltipCopy";
+import { useTour } from "../context/TourContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ProfilePage() {
+  const { startTour } = useTour();
   const [userData] = useState(() => JSON.parse(localStorage.getItem("stockiq_user") || "{}"));
   const USER_ID = userData.user_id;
   const token = userData.token;
@@ -456,6 +458,34 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+          <hr style={{ margin: "1.5rem 0" }} />
+          <h3 style={{ margin: "0 0 8px 0" }}>App Tour</h3>
+          <p style={{ margin: "0 0 12px 0", color: "var(--color-muted, #94a3b8)", fontSize: "0.875rem" }}>
+            Replay the guided tour at any time to revisit how StockIQ works.
+          </p>
+          <button
+            type="button"
+            onClick={() => startTour(true)}
+            style={{
+              padding: "0.5rem 1.25rem",
+              background: "transparent",
+              border: "1px solid #38bdf8",
+              color: "#38bdf8",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(56,189,248,0.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            Revisit App Tour
+          </button>
         </article>
       </section>
     </Layout>

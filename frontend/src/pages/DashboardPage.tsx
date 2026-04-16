@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import InfoTooltip from '../components/InfoTooltip';
-import OnboardingTour from '../components/OnboardingTour';
 import { useAuth } from '../context/AuthContext';
+import { useTour } from '../context/TourContext';
 import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
@@ -25,13 +25,13 @@ interface WatchlistData {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { startTour } = useTour();
   const [watchlist, setWatchlist] = useState<WatchlistData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // State to track which stock is currently displayed in the Dual-Axis Graph
   const [activeTicker, setActiveTicker] = useState<string | null>(null);
-  const [showTour, setShowTour] = useState(false);
 
   // Check onboarding status to decide whether to show the tour (UC-14)
   useEffect(() => {
@@ -43,14 +43,14 @@ export default function DashboardPage() {
         });
         const data = await res.json();
         if (data.status === 'success' && data.has_completed_onboarding === false) {
-          setShowTour(true);
+          startTour();
         }
       } catch {
         // fail silently — never block the dashboard
       }
     }
     checkOnboardingStatus();
-  }, [user]);
+  }, [user]); // eslint-disable-line
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -206,8 +206,6 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* UC-14: Onboarding tour — first login only */}
-      {showTour && <OnboardingTour onComplete={() => setShowTour(false)} />}
     </Layout>
   );
 }
