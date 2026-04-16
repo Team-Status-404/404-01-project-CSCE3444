@@ -102,6 +102,7 @@ export default function StockDetailPage() {
       })
       .catch(() => {/* fail silently — news is non-critical */})
       .finally(() => setNewsLoading(false));
+  }, [displayTicker]);
   // ==========================================
   // UC-09: SSE STREAM CONNECTION (Jeel Patel - Sprint 3)
   // Connects to the backend SSE endpoint and listens for
