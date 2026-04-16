@@ -71,6 +71,14 @@ const TOUR_STEPS: TourStep[] = [
     location: 'Use the 🔔 Set Alert button on any stock detail page. Manage all alerts under the Alerts page by clicking the bell icon in the top right corner of the navigation bar.',
     icon: '🔔',
   },
+  // ── 9. ⓘ Icon ─────────────────────────────────────────────────────────
+  {
+    title: 'Look for the ⓘ Icon',
+    description:
+      "Throughout StockIQ, you'll see a small ⓘ icon next to certain metrics and features. Tap or hover over it anytime to learn what that component does.",
+    location: "You'll find these icons next to almost every metric — on your Dashboard, Stock Detail pages, and Profile.",
+    icon: 'ⓘ',
+  },
 ];
 
 interface OnboardingTourProps {
