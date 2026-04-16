@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
@@ -8,6 +8,20 @@ import InfoTooltip from '../components/InfoTooltip';
 import { useAuth } from '../context/AuthContext';
 import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+function getSentimentColor(score: number): string {
+  if (score >= 0.05) return '#4ade80';
+  if (score <= -0.05) return '#f87171';
+  return '#94a3b8';
+}
+
+function getSentimentLabel(score: number): string {
+  if (score >= 0.05) return 'Positive';
+  if (score <= -0.05) return 'Negative';
+  return 'Neutral';
+}
 
 interface StockData {
   ticker: string;
@@ -27,6 +41,16 @@ interface StockData {
   };
 }
 
+interface NewsArticle {
+  article_id: string;
+  headline: string;
+  publish_date: string;
+  source: string;
+  sentiment_score: number;
+  url: string;
+  description: string;
+}
+
 export default function StockDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -40,12 +64,15 @@ export default function StockDetailPage() {
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
+  // ==========================================
+  // UC-14: NLP SENTIMENT STATE
+  // ==========================================
   interface SentimentData { tag: string; newsVolume: number; socialVolume: number; }
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null);
 
   // Fetch NLP sentiment tag for the NLP Tags section (UC-14)
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/sentiment/${displayTicker}`)
+    fetch(`${API_BASE}/api/sentiment/${displayTicker}`)
       .then((res) => res.json())
       .then((result) => {
         if (result.hype_score !== undefined) {
@@ -59,16 +86,37 @@ export default function StockDetailPage() {
       .catch(() => {}); // fail silently
   }, [displayTicker]);
 
+  // News feed state
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+
+  // AI Summary modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalArticle, setModalArticle] = useState<NewsArticle | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  // ==========================================
+  // UC-09: LIVE PRICE STATE (Jeel Patel - Sprint 3)
+  // ==========================================
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
+  const [priceStatus, setPriceStatus] = useState<'live' | 'stale' | 'error'>('live');
+  const prevPriceRef = useRef<number | null>(null);
+
   // Fetch all stock data (including the new graph arrays) from the backend
   useEffect(() => {
     setLoading(true);
     setPageError(null);
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/stock/${displayTicker}`)
+    fetch(`${API_BASE}/api/stock/${displayTicker}`)
       .then((res) => res.json())
       .then((result) => {
         if (result.status === 'success') {
           setStockData(result.data);
+          setLivePrice(result.data.currentPrice);
+          prevPriceRef.current = result.data.currentPrice;
         } else {
           setPageError(result.message || 'Could not find that ticker.');
         }
@@ -77,26 +125,87 @@ export default function StockDetailPage() {
       .finally(() => setLoading(false));
   }, [displayTicker]);
 
+  // Fetch live news articles
+  useEffect(() => {
+    setNewsLoading(true);
+    fetch(`${API_BASE}/api/news/${displayTicker}`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.status === 'success') {
+          setNewsArticles(result.articles);
+        }
+      })
+      .catch(() => {/* fail silently — news is non-critical */})
+      .finally(() => setNewsLoading(false));
+    }, [displayTicker]);
+
+  // ==========================================
+  // UC-09: SSE STREAM CONNECTION (Jeel Patel - Sprint 3)
+  // Connects to the backend SSE endpoint and listens for
+  // live price updates. Triggers green/red flash animation
+  // when the price changes. Auto-reconnects if connection drops.
+  // ==========================================
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/api/stocks/${displayTicker}/stream`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.status === 'live' && data.currentPrice != null) {
+          const newPrice = data.currentPrice;
+          setPriceStatus('live');
+
+          // Trigger green/red flash animation by comparing with previous price
+          if (prevPriceRef.current !== null && newPrice !== prevPriceRef.current) {
+            setPriceFlash(newPrice > prevPriceRef.current ? 'up' : 'down');
+            // Remove flash class after 1 second so it can re-trigger
+            setTimeout(() => setPriceFlash(null), 1000);
+          }
+
+          prevPriceRef.current = newPrice;
+          setLivePrice(newPrice);
+        } else if (data.status === 'stale') {
+          setPriceStatus('stale');
+        } else if (data.status === 'error') {
+          setPriceStatus('error');
+        }
+      } catch (err) {
+        console.error('SSE parse error:', err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      setPriceStatus('stale');
+      // EventSource will auto-reconnect by default
+    };
+
+    // Cleanup: close the SSE connection when the user leaves this page
+    return () => {
+      eventSource.close();
+    };
+  }, [displayTicker]);
+
   // Handle adding the stock to the user's watchlist
   const handleAddStock = async () => {
     if (!user) return;
     setIsAdding(true);
-    
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/add`, {
+      const res = await fetch(`${API_BASE}/api/watchlist/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ 
-          user_id: user.user_id, 
-          ticker: displayTicker 
+        body: JSON.stringify({
+          user_id: user.user_id,
+          ticker: displayTicker
         })
       });
 
       const data = await res.json();
-      
+
       if (data.status === 'success') {
         setFeedback({ message: `${displayTicker} added to your watchlist!`, type: 'success' });
       } else {
@@ -111,14 +220,69 @@ export default function StockDetailPage() {
     }
   };
 
+  // Open modal and trigger AI summarization for a given article
+  const handleSummaryClick = async (article: NewsArticle) => {
+    setModalArticle(article);
+    setModalOpen(true);
+    setSummary(null);
+    setSummaryError(null);
+    setSummaryLoading(true);
+
+    try {
+      const text = `${article.headline}. ${article.description}`.trim();
+      const res = await fetch(`${API_BASE}/api/news/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, url: article.url })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setSummary(data.summary);
+      } else {
+        setSummaryError(data.message || 'Failed to generate summary.');
+      }
+    } catch {
+      setSummaryError('Network error — could not reach the server.');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalArticle(null);
+    setSummary(null);
+    setSummaryError(null);
+  };
+
   // Dynamically format the backend arrays for Recharts
-  const chartData = stockData?.graph_data 
+  const chartData = stockData?.graph_data
     ? stockData.graph_data.historical_prices.map((price, index) => ({
         day: `Day ${index + 1}`,
         price: price,
         sentiment: stockData.graph_data!.historical_sentiment[index]
-      })) 
+      }))
     : [];
+
+  // ==========================================
+  // UC-09: HELPER — Get the display price and flash style
+  // ==========================================
+  const displayPrice = livePrice ?? stockData?.currentPrice ?? null;
+
+  const getPriceStyle = (): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      fontSize: '2.5rem',
+      display: 'block',
+      transition: 'color 0.3s ease',
+    };
+
+    if (priceFlash === 'up') {
+      return { ...base, color: '#4ade80' }; // green flash
+    } else if (priceFlash === 'down') {
+      return { ...base, color: '#ef4444' }; // red flash
+    }
+    return base;
+  };
 
   if (loading) {
     return (
@@ -146,8 +310,8 @@ export default function StockDetailPage() {
       {/* Navigation & Feedback Area */}
       <div style={{ padding: '0 24px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <div>
-          <button 
-            onClick={() => navigate(-1)} 
+          <button
+            onClick={() => navigate(-1)}
             style={{
               background: 'transparent',
               border: 'none',
@@ -167,9 +331,9 @@ export default function StockDetailPage() {
         </div>
 
         {feedback && (
-          <div style={{ 
-            padding: '12px 16px', 
-            borderRadius: '8px', 
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
             fontWeight: 'bold',
             backgroundColor: feedback.type === 'success' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
             color: feedback.type === 'success' ? '#4ade80' : '#ef4444',
@@ -181,12 +345,12 @@ export default function StockDetailPage() {
       </div>
 
       <section style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', padding: '0 24px' }}>
-        
+
         {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+
           <article className="card hero-card" style={{ padding: '24px', border: stockData?.divergence_warning_active ? '2px solid #ef4444' : '1px solid #1e293b' }}>
-            
+
             {/* Visual Warning Alert Banner (FR-03) */}
             {stockData?.divergence_warning_active && (
               <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
@@ -234,10 +398,48 @@ export default function StockDetailPage() {
                   </span>
                 )}
               </div>
+
+              {/* UC-09: LIVE PRICE DISPLAY WITH FLASH ANIMATION */}
               <div style={{ textAlign: 'right' }}>
-                <strong style={{ fontSize: '2.5rem', display: 'block' }}>
-                  {stockData?.currentPrice ? `$${stockData.currentPrice.toFixed(2)}` : 'N/A'}
+                <strong style={getPriceStyle()}>
+                  {displayPrice ? `$${displayPrice.toFixed(2)}` : 'N/A'}
                 </strong>
+
+                {/* UC-09: Live/Stale Status Indicator */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
+                  {priceStatus === 'live' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#4ade80',
+                        display: 'inline-block',
+                        animation: 'pulse 2s infinite'
+                      }} />
+                      <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 'bold' }}>LIVE</span>
+                    </>
+                  )}
+                  {priceStatus === 'stale' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#f59e0b',
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 'bold' }}>Price Stale</span>
+                    </>
+                  )}
+                  {priceStatus === 'error' && (
+                    <>
+                      <span style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        backgroundColor: '#ef4444',
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 'bold' }}>Market Closed</span>
+                    </>
+                  )}
+                </div>
+
                 {stockData?.movingAverage5Day && (
                   <span style={{ color: '#94a3b8', fontSize: '0.95rem' }}>
                     5-Day MA: <strong style={{ color: '#38bdf8' }}>${stockData.movingAverage5Day.toFixed(2)}</strong>
@@ -249,8 +451,8 @@ export default function StockDetailPage() {
             {/* Timeframe Toggles */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               {['1D', '1W', '1M', '3M', '1Y', '5Y'].map((tf) => (
-                <button 
-                  key={tf} 
+                <button
+                  key={tf}
                   style={{
                     background: tf === '1W' ? '#38bdf8' : 'transparent',
                     color: tf === '1W' ? '#fff' : '#94a3b8',
@@ -362,21 +564,164 @@ export default function StockDetailPage() {
             </div>
           </article>
 
+          {/* Live News Feed */}
           <article className="card info-card" style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: '20px', margin: 0 }}>Recent News</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '15px', lineHeight: '1.4' }}>{stockData?.companyName || displayTicker} announces strategic market expansion.</p>
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>Reuters • 2h ago</span>
+            <h3 style={{ marginBottom: '16px', margin: '0 0 16px 0' }}>Recent News</h3>
+
+            {newsLoading ? (
+              <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>Loading news...</p>
+            ) : newsArticles.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>No recent news found.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {newsArticles.slice(0, 5).map((article) => (
+                  <div key={article.article_id} style={{ borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', lineHeight: '1.5', color: '#f1f5f9' }}>
+                      {article.headline}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>
+                        {article.source}
+                        {article.publish_date ? ` • ${new Date(article.publish_date).toLocaleDateString()}` : ''}
+                      </span>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: getSentimentColor(article.sentiment_score),
+                        background: `${getSentimentColor(article.sentiment_score)}18`,
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        border: `1px solid ${getSentimentColor(article.sentiment_score)}40`,
+                        flexShrink: 0,
+                      }}>
+                        {getSentimentLabel(article.sentiment_score)}
+                      </span>
+                      <button
+                        onClick={() => handleSummaryClick(article)}
+                        style={{
+                          marginLeft: 'auto',
+                          background: 'transparent',
+                          border: '1px solid #38bdf8',
+                          color: '#38bdf8',
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = '#38bdf8';
+                          e.currentTarget.style.color = '#0f172a';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = '#38bdf8';
+                        }}
+                      >
+                        Read AI Summary
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '15px', lineHeight: '1.4' }}>Why Wall Street analysts are adjusting targets for {displayTicker}.</p>
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>CNBC • 4h ago</span>
-              </div>
-            </div>
+            )}
           </article>
         </div>
       </section>
+
+      {/* AI Summary Modal */}
+      {modalOpen && modalArticle && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#1e293b',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '560px',
+              width: '100%',
+              position: 'relative',
+              border: '1px solid #334155',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeModal}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                fontSize: '1.5rem',
+                lineHeight: 1,
+                padding: '4px',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.color = '#f8fafc'}
+              onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+            >
+              ×
+            </button>
+
+            {/* Modal header */}
+            <div style={{ marginBottom: '20px', paddingRight: '32px' }}>
+              <p style={{ margin: 0, color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
+                {modalArticle.headline}
+              </p>
+            </div>
+
+            {/* Summary content */}
+            <div style={{ borderTop: '1px solid #334155', paddingTop: '20px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center' }}>
+              {summaryLoading && (
+                <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>Generating summary...</p>
+              )}
+              {summaryError && !summaryLoading && (
+                <p style={{ color: '#ef4444', margin: 0, fontSize: '14px' }}>{summaryError}</p>
+              )}
+              {summary && !summaryLoading && (
+                <p style={{ color: '#f1f5f9', lineHeight: '1.7', fontSize: '15px', margin: 0 }}>
+                  {summary}
+                </p>
+              )}
+              {modalArticle?.url && (
+                <a
+                  href={modalArticle.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#38bdf8', fontSize: '13px', textDecoration: 'underline' }}
+                >
+                  Read full article →
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* UC-09: CSS Animation for the pulsing green LIVE dot */}
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.4; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </Layout>
   );
 }
