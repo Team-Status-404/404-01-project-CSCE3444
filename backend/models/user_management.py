@@ -1,5 +1,8 @@
 import os
 import re
+import smtplib # added for sending reset emails to the user
+from email.mime.text import MIMEText # added for sending reset emails to the user
+from email.mime.multipart import MIMEMultipart # added for sending reset emails to the user
 import secrets
 import datetime
 import bcrypt
@@ -15,6 +18,13 @@ from google.auth.transport import requests as google_requests
 from datetime import datetime, timezone, timedelta
 
 load_dotenv()
+
+# Email configuration fallback
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME") 
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD") 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # change this by putting it to .env once deployed (fine for now since we're using a dev env)
 JWT_SECRET = os.getenv("JWT_SECRET", "stockiq-dev-secret-change-in-prod")
@@ -73,6 +83,48 @@ def _generate_token(user_id: int, username: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
+
+# added helper function to handle sending reset emails to users
+def _send_reset_email(to_email: str, token: str):
+    """Sends the reset email, or prints to terminal if SMTP is not configured."""
+    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+
+    # fallback if the username and password details are not retrieved
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        print("\n*** WARNING: SMTP credentials not set in .env. Falling back to terminal. ***")
+        print(f"*** SIMULATED EMAIL TO {to_email} ***\nClick to reset: {reset_link}\n")
+        return
+
+    msg = MIMEMultipart()
+    msg['From'] = SMTP_USERNAME
+    msg['To'] = to_email
+    msg['Subject'] = "StockIQ Password Reset"
+
+    body = f"""
+    Hello,
+
+    You recently requested to reset the password for your StockIQ account.
+    Please click the link below to securely set a new password. 
+    
+    This link is valid for 30 minutes:
+    {reset_link}
+
+    If you did not request this reset, you can safely ignore this email.
+
+    Best regards,
+    The StockIQ Team
+    """
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()  # Secure the connection
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print(f"Successfully sent reset email to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 class User:
     def __init__(self, user_id: int, username: str, email: str):
@@ -263,10 +315,8 @@ class User:
                 )
                 conn.commit()
 
-                # 4. Email Dispatch Simulation (Replace with actual email logic later)
-                # Using your localhost frontend port for testing
-                reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
-                print(f"*** SIMULATED EMAIL TO {email} ***\nClick to reset: {reset_link}")
+                # 4. Send reset email to user
+                _send_reset_email(email, reset_token)
 
             # Always return a generic success message to prevent email enumeration
             return {
