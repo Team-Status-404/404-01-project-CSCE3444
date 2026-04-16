@@ -227,16 +227,130 @@ class Stock:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    # ============================================================
+    # UC-09 | FR-10: LIVE PRICE METHOD (Jeel Patel - Sprint 3)
+    # ============================================================
+    def fetchLivePrice(self) -> Dict[str, Any]:
+        """
+        UC-09 | FR-10: Lightweight method to fetch ONLY the current trading price.
+        Uses a 30-second cache for near-real-time feel without hammering the API.
+        Much faster than fetch_stock_data() since it skips profile/sentiment/graphs.
+        """
+        conn = None
+
+        # 1. CHECK DATABASE CACHE (30-second window for live price)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT current_price, company_name, last_updated
+                FROM stocks
+                WHERE ticker = %s AND last_updated >= NOW() - INTERVAL '30 seconds'
+                """,
+                (self._tickerSymbol,)
+            )
+            cached = cur.fetchone()
+            cur.close()
+
+            if cached:
+                return {
+                    "status": "success",
+                    "cached": True,
+                    "data": {
+                        "ticker": self._tickerSymbol,
+                        "companyName": cached[1] or self._tickerSymbol,
+                        "currentPrice": float(cached[0]) if cached[0] else None,
+                        "lastUpdated": cached[2].isoformat() if cached[2] else None
+                    }
+                }
+        except Exception as e:
+            print(f"DEBUG: LivePrice Cache Read Error: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+        # 2. FETCH FRESH PRICE — Try FMP first, fallback to yfinance
+        api_key = os.getenv("FINANCE_DATA_KEY")
+        live_price = None
+        source = None
+
+        # --- PRIMARY: Financial Modeling Prep quote endpoint (fast, price-only) ---
+        if api_key:
+            try:
+                quote_url = f"https://financialmodelingprep.com/stable/quote?symbol={self._tickerSymbol}&apikey={api_key}"
+                resp = requests.get(quote_url, timeout=5)
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data:
+                        live_price = round(float(data[0].get('price', 0)), 2)
+                        self._companyName = data[0].get('name', self._tickerSymbol)
+                        source = "fmp"
+            except Exception as e:
+                print(f"DEBUG: FMP LivePrice Error: {e}")
+
+        # --- FALLBACK: yfinance ---
+        if live_price is None:
+            try:
+                stock_obj = yf.Ticker(self._tickerSymbol)
+                hist = stock_obj.history(period="1d")
+                if not hist.empty:
+                    live_price = round(float(hist['Close'].iloc[-1]), 2)
+                    try:
+                        self._companyName = stock_obj.info.get('longName', self._tickerSymbol)
+                    except Exception:
+                        self._companyName = self._tickerSymbol
+                    source = "yfinance"
+                else:
+                    return {"status": "error", "message": f"Ticker '{self._tickerSymbol}' not found."}
+            except Exception as e:
+                return {"status": "error", "message": f"Price fetch failed: {str(e)}"}
+
+        # 3. UPDATE THE DATABASE CACHE (only update price and timestamp)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO stocks (ticker, company_name, current_price, last_updated)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker) DO UPDATE SET
+                    current_price = EXCLUDED.current_price,
+                    last_updated = EXCLUDED.last_updated
+                """,
+                (self._tickerSymbol, self._companyName, live_price)
+            )
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            print(f"DEBUG: LivePrice Cache Write Error: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+        return {
+            "status": "success",
+            "cached": False,
+            "source": source,
+            "data": {
+                "ticker": self._tickerSymbol,
+                "companyName": self._companyName,
+                "currentPrice": live_price,
+                "lastUpdated": None
+            }
+        }
+
+
 class NewsArticle:
-    def __init__(self, article_id: str, headline: str, publish_date: str, source: str, sentiment_score: float):
+    def __init__(self, article_id: str, headline: str, publish_date: str, source: str, sentiment_score: float, url: str = '', description: str = ''):
         self._articleID: str = article_id
         self._headline: str = headline
         self._publishDate: str = publish_date
         self._source: str = source
         self._sentimentScore: float = sentiment_score
-
-    def generateAISummary(self) -> str:
-        pass
+        self._url: str = url
+        self._description: str = description
 
 
 class SentimentAnalyzer:
@@ -319,7 +433,9 @@ class SentimentAnalyzer:
                     headline=art.get('title', ''),
                     publish_date=art.get('pubDate', ''),
                     source=art.get('source_id', 'NewsData'),
-                    sentiment_score=score
+                    sentiment_score=score,
+                    url=art.get('link', ''),
+                    description=art.get('description', ''),
                 ))
                 
             return (total_compound / volume) if volume > 0 else 0.0, volume
@@ -471,14 +587,30 @@ class SentimentAnalyzer:
             "hype_score": hype_score,
             "tag": tag,
             "metrics": {
-                "social_volume": chatter_vol, 
+                "social_volume": chatter_vol,
                 "news_volume": news_vol,
                 "raw_sentiment": round(final_compound, 4)
             },
             "cached": False
         }
-        
-        
+
+    def get_articles(self, ticker: str) -> List[Dict[str, Any]]:
+        """Fetches and returns serializable news articles for a given ticker."""
+        self._get_news_sentiment(ticker)
+        return [
+            {
+                "article_id": a._articleID,
+                "headline": a._headline,
+                "publish_date": a._publishDate,
+                "source": a._source,
+                "sentiment_score": round(a._sentimentScore, 4),
+                "url": a._url,
+                "description": a._description,
+            }
+            for a in self.articles
+        ]
+
+
 """ Dashboard helper functions for the Watchlist class
     Even though the functions below serve the Watchlist class 
     they belong in this file because of "Sepration of Concerns".

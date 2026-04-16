@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import HypeMeter from '../components/HypeMeter';
+import NewsFeed from '../components/NewsFeed';
 import AlertBell from '../components/AlertBell';
 import InfoTooltip from '../components/InfoTooltip';
 import { useAuth } from '../context/AuthContext';
