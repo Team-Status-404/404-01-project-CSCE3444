@@ -626,32 +626,27 @@ export default function StockDetailPage() {
             </div>
 
             {/* Summary content */}
-            <div style={{ borderTop: '1px solid #334155', paddingTop: '20px', minHeight: '80px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ borderTop: '1px solid #334155', paddingTop: '20px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center' }}>
               {summaryLoading && (
                 <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>Generating summary...</p>
               )}
               {summaryError && !summaryLoading && (
-                <div style={{ fontSize: '14px' }}>
-                  <p style={{ color: '#ef4444', margin: '0 0 10px 0' }}>{summaryError}</p>
-                  {modalArticle?.url && (
-                    <p style={{ margin: 0, color: '#94a3b8' }}>
-                      You can still read the full article here:{' '}
-                      <a
-                        href={modalArticle.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#38bdf8', textDecoration: 'underline' }}
-                      >
-                        {modalArticle.source || 'Open article'}
-                      </a>
-                    </p>
-                  )}
-                </div>
+                <p style={{ color: '#ef4444', margin: 0, fontSize: '14px' }}>{summaryError}</p>
               )}
               {summary && !summaryLoading && (
                 <p style={{ color: '#f1f5f9', lineHeight: '1.7', fontSize: '15px', margin: 0 }}>
                   {summary}
                 </p>
+              )}
+              {modalArticle?.url && (
+                <a
+                  href={modalArticle.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#38bdf8', fontSize: '13px', textDecoration: 'underline' }}
+                >
+                  Read full article →
+                </a>
               )}
             </div>
           </div>
