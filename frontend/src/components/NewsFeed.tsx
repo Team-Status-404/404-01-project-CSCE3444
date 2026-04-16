@@ -82,6 +82,7 @@ export default function NewsFeed({ ticker }: NewsFeedProps) {
           setError(data.message || 'Could not load news.');
         }
       } catch (err) {
+        console.error('Error:', err);
         setError('Network error — could not reach the server.');
       } finally {
         setLoading(false);
