@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const { login, register, googleLogin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // To catch redirect states
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
@@ -13,6 +14,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check if we were redirected here with a success message
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
 useEffect(() => {
   // Only redirect if they are ALREADY logged in when the page first loads
@@ -105,6 +109,8 @@ useEffect(() => {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
+          {/* Display success message if redirected from reset password */}
+          {successMessage && <div className="form-success" style={{ color: 'green', marginBottom: '10px' }}>{successMessage}</div>}
           {isSignUp && (
             <label>
               Username
@@ -139,6 +145,15 @@ useEffect(() => {
               required
             />
           </label>
+
+          {/* Forgot Password Link (Should Only show on Sign In Page) */}
+          {!isSignUp && (
+            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+              <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: '#007bff' }}>
+                Forgot Password?
+              </Link>
+            </div>
+          )}
 
           {error && <p className="form-error">{error}</p>}
 
