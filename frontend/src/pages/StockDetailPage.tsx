@@ -5,7 +5,9 @@ import TopBar from '../components/TopBar';
 import HypeMeter from '../components/HypeMeter';
 import NewsFeed from '../components/NewsFeed';
 import AlertBell from '../components/AlertBell';
+import InfoTooltip from '../components/InfoTooltip';
 import { useAuth } from '../context/AuthContext';
+import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -63,6 +65,28 @@ export default function StockDetailPage() {
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
+  // ==========================================
+  // UC-14: NLP SENTIMENT STATE
+  // ==========================================
+  interface SentimentData { tag: string; newsVolume: number; socialVolume: number; }
+  const [sentimentData, setSentimentData] = useState<SentimentData | null>(null);
+
+  // Fetch NLP sentiment tag for the NLP Tags section (UC-14)
+  useEffect(() => {
+    fetch(`${API_BASE}/api/sentiment/${displayTicker}`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.hype_score !== undefined) {
+          setSentimentData({
+            tag: result.tag,
+            newsVolume: result.metrics?.news_volume ?? 0,
+            socialVolume: result.metrics?.social_volume ?? 0,
+          });
+        }
+      })
+      .catch(() => {}); // fail silently
+  }, [displayTicker]);
+
   // News feed state
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -74,7 +98,6 @@ export default function StockDetailPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  // Fetch stock data
   // ==========================================
   // UC-09: LIVE PRICE STATE (Jeel Patel - Sprint 3)
   // ==========================================
@@ -106,7 +129,7 @@ export default function StockDetailPage() {
   // Fetch live news articles
   useEffect(() => {
     setNewsLoading(true);
-    fetch(`${import.meta.env.VITE_API_URL}/api/news/${displayTicker}`)
+    fetch(`${API_BASE}/api/news/${displayTicker}`)
       .then((res) => res.json())
       .then((result) => {
         if (result.status === 'success') {
@@ -116,6 +139,7 @@ export default function StockDetailPage() {
       .catch(() => {/* fail silently — news is non-critical */})
       .finally(() => setNewsLoading(false));
     }, [displayTicker]);
+
   // ==========================================
   // UC-09: SSE STREAM CONNECTION (Jeel Patel - Sprint 3)
   // Connects to the backend SSE endpoint and listens for
@@ -207,7 +231,7 @@ export default function StockDetailPage() {
 
     try {
       const text = `${article.headline}. ${article.description}`.trim();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/news/summarize`, {
+      const res = await fetch(`${API_BASE}/api/news/summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, url: article.url })
@@ -332,6 +356,7 @@ export default function StockDetailPage() {
             {stockData?.divergence_warning_active && (
               <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                 <span>⚠️</span> The price trend and sentiment trend have critically diverged.
+                <InfoTooltip content={TOOLTIP_COPY.DIVERGENCE_WARNING} id="tooltip-divergence-detail" />
               </div>
             )}
 
@@ -340,23 +365,26 @@ export default function StockDetailPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <h2 style={{ fontSize: '2.5rem', margin: 0 }}>{displayTicker}</h2>
                   <AlertBell ticker={displayTicker} />
-                  <button
-                    onClick={handleAddStock}
-                    disabled={isAdding}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#38bdf8',
-                      color: '#0f172a',
-                      border: 'none',
-                      borderRadius: '20px',
-                      fontWeight: 'bold',
-                      cursor: isAdding ? 'not-allowed' : 'pointer',
-                      opacity: isAdding ? 0.7 : 1,
-                      transition: 'opacity 0.2s ease'
-                    }}
-                  >
-                    {isAdding ? 'Adding...' : '+ Watchlist'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <button
+                      onClick={handleAddStock}
+                      disabled={isAdding}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#38bdf8',
+                        color: '#0f172a',
+                        border: 'none',
+                        borderRadius: '20px',
+                        fontWeight: 'bold',
+                        cursor: isAdding ? 'not-allowed' : 'pointer',
+                        opacity: isAdding ? 0.7 : 1,
+                        transition: 'opacity 0.2s ease'
+                      }}
+                    >
+                      {isAdding ? 'Adding...' : '+ Watchlist'}
+                    </button>
+                    <InfoTooltip content={TOOLTIP_COPY.ADD_TO_WATCHLIST} />
+                  </div>
                 </div>
                 <p className="muted-label" style={{ margin: '5px 0 0 0' }}>
                   {stockData?.companyName || 'Company Overview'}
@@ -461,24 +489,71 @@ export default function StockDetailPage() {
           {/* Bottom Metrics */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             <article className="card stat-card">
-              <p className="muted-label">Volatility</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <p className="muted-label" style={{ margin: 0 }}>Volatility</p>
+                <InfoTooltip content={TOOLTIP_COPY.VOLATILITY} />
+              </div>
               <strong style={{ fontSize: '1.4rem', display: 'block', margin: '8px 0' }}>
                 {stockData?.volatility ? `${stockData.volatility}%` : 'N/A'}
               </strong>
             </article>
             <article className="card stat-card">
-              <p className="muted-label">52W High</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <p className="muted-label" style={{ margin: 0 }}>52W High</p>
+                <InfoTooltip content={TOOLTIP_COPY.WEEK_52_HIGH} />
+              </div>
               <strong style={{ fontSize: '1.4rem', display: 'block', margin: '8px 0', color: '#4ade80' }}>
                 {stockData?.fiftyTwoWeekHigh ? `$${stockData.fiftyTwoWeekHigh.toFixed(2)}` : 'N/A'}
               </strong>
             </article>
             <article className="card stat-card">
-              <p className="muted-label">52W Low</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <p className="muted-label" style={{ margin: 0 }}>52W Low</p>
+                <InfoTooltip content={TOOLTIP_COPY.WEEK_52_LOW} />
+              </div>
               <strong style={{ fontSize: '1.4rem', display: 'block', margin: '8px 0', color: '#ef4444' }}>
                 {stockData?.fiftyTwoWeekLow ? `$${stockData.fiftyTwoWeekLow.toFixed(2)}` : 'N/A'}
               </strong>
             </article>
           </div>
+
+          {/* NLP Tags Section (UC-14) */}
+          {sentimentData && (
+            <article className="card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 16 }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>NLP Tags</h3>
+                <InfoTooltip content={TOOLTIP_COPY.NLP_TAGS} id="tooltip-nlp-tags-detail" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Sentiment Pill */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.9rem', minWidth: 120 }}>Overall Sentiment</span>
+                  <span style={{
+                    padding: '4px 14px',
+                    borderRadius: 20,
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    background: sentimentData.tag === 'Positive' ? 'rgba(74,222,128,0.12)' : sentimentData.tag === 'Negative' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.10)',
+                    color: sentimentData.tag === 'Positive' ? '#4ade80' : sentimentData.tag === 'Negative' ? '#ef4444' : '#94a3b8',
+                    border: `1px solid ${sentimentData.tag === 'Positive' ? 'rgba(74,222,128,0.3)' : sentimentData.tag === 'Negative' ? 'rgba(239,68,68,0.3)' : 'rgba(148,163,184,0.2)'}`,
+                  }}>
+                    {sentimentData.tag === 'Positive' ? '▲ ' : sentimentData.tag === 'Negative' ? '▼ ' : '● '}{sentimentData.tag}
+                  </span>
+                </div>
+                {/* Signal Counts */}
+                <div style={{ display: 'flex', gap: 24 }}>
+                  <div>
+                    <p className="muted-label" style={{ margin: '0 0 4px', fontSize: '0.8rem' }}>News Signals</p>
+                    <strong style={{ fontSize: '1.2rem', color: '#38bdf8' }}>{sentimentData.newsVolume}</strong>
+                  </div>
+                  <div>
+                    <p className="muted-label" style={{ margin: '0 0 4px', fontSize: '0.8rem' }}>Social Signals</p>
+                    <strong style={{ fontSize: '1.2rem', color: '#38bdf8' }}>{sentimentData.socialVolume}</strong>
+                  </div>
+                </div>
+              </div>
+            </article>
+          )}
         </div>
 
         {/* RIGHT COLUMN */}

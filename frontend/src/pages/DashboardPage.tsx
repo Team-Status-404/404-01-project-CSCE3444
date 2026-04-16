@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
+import InfoTooltip from '../components/InfoTooltip';
 import { useAuth } from '../context/AuthContext';
-import { 
+import { useTour } from '../context/TourContext';
+import { TOOLTIP_COPY } from '../constants/tooltipCopy';
+import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
@@ -22,12 +25,32 @@ interface WatchlistData {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { startTour } = useTour();
   const [watchlist, setWatchlist] = useState<WatchlistData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // State to track which stock is currently displayed in the Dual-Axis Graph
   const [activeTicker, setActiveTicker] = useState<string | null>(null);
+
+  // Check onboarding status to decide whether to show the tour (UC-14)
+  useEffect(() => {
+    async function checkOnboardingStatus() {
+      if (!user) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/user/profile`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.has_completed_onboarding === false) {
+          startTour();
+        }
+      } catch {
+        // fail silently — never block the dashboard
+      }
+    }
+    checkOnboardingStatus();
+  }, [user]); // eslint-disable-line
 
   // ==========================================
   // UC-09: LIVE PRICE STATE FOR DASHBOARD CARDS (Jeel Patel - Sprint 3)
@@ -161,7 +184,10 @@ export default function DashboardPage() {
 
       {/* --- WATCHLIST GRID --- */}
       <section className="section-block" style={{ marginTop: '20px' }}>
-        <h3 style={{ margin: '0 0 15px 0' }}>My Watchlist</h3>
+        <div data-tour="watchlist-section" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 15 }}>
+          <h3 style={{ margin: 0 }}>My Watchlist</h3>
+          <InfoTooltip content={TOOLTIP_COPY.WATCHLIST_SECTION} id="tour-info-tooltip-demo" />
+        </div>
         
         {watchlist.length === 0 && !error ? (
           <p style={{ color: '#94a3b8' }}>You aren't tracking any stocks yet. Go to Markets to add some!</p>
@@ -187,10 +213,11 @@ export default function DashboardPage() {
                     overflow: 'hidden'
                   }}
                 >
-                  {/* Visual Warning Alert Banner (FR-03) */}
+                  {/* Visual Warning Alert Banner (FR-03) combined with UC-14 info tooltips */}
                   {stock.divergence_warning_active && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#ef4444', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center', padding: '4px', letterSpacing: '1px' }}>
-                      ⚠️ DIVERGENCE WARNING
+                    <div data-tour="divergence-warning" style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#ef4444', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center', padding: '4px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span>⚠️ DIVERGENCE WARNING</span>
+                      <InfoTooltip content={TOOLTIP_COPY.DIVERGENCE_WARNING} id="tooltip-divergence" />
                     </div>
                   )}
 
@@ -206,7 +233,9 @@ export default function DashboardPage() {
                     </h3>
                   </div>
                   <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#94a3b8' }}>
-                    <span>5D MA:</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      5D MA <InfoTooltip content={TOOLTIP_COPY.DASHBOARD_MA} />:
+                    </span>
                     <span>${stock.ma_5_day.toFixed(2)}</span>
                   </div>
                 </div>
@@ -231,6 +260,7 @@ export default function DashboardPage() {
               {activeStock.divergence_warning_active && (
                 <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 16px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>⚠️</span> The price trend and sentiment trend have critically diverged.
+                  <InfoTooltip content={TOOLTIP_COPY.DIVERGENCE_WARNING} />
                 </div>
               )}
             </div>
@@ -258,6 +288,7 @@ export default function DashboardPage() {
           </article>
         </section>
       )}
+
     </Layout>
   );
 }
