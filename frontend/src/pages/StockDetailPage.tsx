@@ -10,6 +10,18 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+function getSentimentColor(score: number): string {
+  if (score >= 0.05) return '#4ade80';
+  if (score <= -0.05) return '#f87171';
+  return '#94a3b8';
+}
+
+function getSentimentLabel(score: number): string {
+  if (score >= 0.05) return 'Positive';
+  if (score <= -0.05) return 'Negative';
+  return 'Neutral';
+}
+
 interface StockData {
   ticker: string;
   companyName: string;
@@ -493,14 +505,27 @@ export default function StockDetailPage() {
                     <p style={{ margin: '0 0 8px 0', fontSize: '14px', lineHeight: '1.5', color: '#f1f5f9' }}>
                       {article.headline}
                     </p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>
                         {article.source}
                         {article.publish_date ? ` • ${new Date(article.publish_date).toLocaleDateString()}` : ''}
                       </span>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: getSentimentColor(article.sentiment_score),
+                        background: `${getSentimentColor(article.sentiment_score)}18`,
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        border: `1px solid ${getSentimentColor(article.sentiment_score)}40`,
+                        flexShrink: 0,
+                      }}>
+                        {getSentimentLabel(article.sentiment_score)}
+                      </span>
                       <button
                         onClick={() => handleSummaryClick(article)}
                         style={{
+                          marginLeft: 'auto',
                           background: 'transparent',
                           border: '1px solid #38bdf8',
                           color: '#38bdf8',
