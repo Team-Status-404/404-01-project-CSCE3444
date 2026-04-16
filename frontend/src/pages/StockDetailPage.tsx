@@ -608,18 +608,6 @@ export default function StockDetailPage() {
 
             {/* Modal header */}
             <div style={{ marginBottom: '20px', paddingRight: '32px' }}>
-              <span style={{
-                display: 'inline-block',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.1)',
-                padding: '3px 10px',
-                borderRadius: '20px',
-                marginBottom: '10px',
-              }}>
-                AI Financial Summary
-              </span>
               <p style={{ margin: 0, color: '#94a3b8', fontSize: '13px', lineHeight: '1.5' }}>
                 {modalArticle.headline}
               </p>
