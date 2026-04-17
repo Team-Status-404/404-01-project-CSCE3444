@@ -28,6 +28,7 @@ export default function ForgotPasswordPage() {
         setError(data.message || 'Something went wrong.');
       }
     } catch (err) {
+      console.error('Error:', err);
       setError('Could not connect to the server.');
     } finally {
       setLoading(false);

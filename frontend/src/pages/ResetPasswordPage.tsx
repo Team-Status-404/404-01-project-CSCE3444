@@ -61,6 +61,7 @@ export default function ResetPasswordPage() {
         setError(data.message || 'Failed to reset password. The token may be expired.');
       }
     } catch (err) {
+      console.error('Error:', err);
       setError('Could not connect to the server.');
     } finally {
       setLoading(false);
