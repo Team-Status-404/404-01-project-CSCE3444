@@ -1,0 +1,35 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Secrets — never bake into the image; inject via GCP Secret Manager or env vars
+.env
+.env.*
+!.env.example
+
+# Dev/test artifacts
+*.log
+*.sqlite3
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Migrations (run separately, not at container startup)
+migrations/
+
+# Node (backend has a stray package-lock.json)
+node_modules/
+package-lock.json
