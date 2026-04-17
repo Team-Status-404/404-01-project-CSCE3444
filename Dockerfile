@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
@@ -49,6 +49,8 @@ USER appuser
 # for correct streaming under gunicorn. If SSE in production is a priority,
 # add "gevent" to requirements.txt and change --threads 8 to
 # --worker-class gevent --worker-connections 100
+WORKDIR /app/backend
+
 ENV PORT=8080
 EXPOSE 8080
 
