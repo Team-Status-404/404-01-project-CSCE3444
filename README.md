@@ -8,13 +8,47 @@
 **Project Overview:** StockIQ is a financial analytics application designed to quantify public sentiment around specific U.S.-traded stock symbols. By aggregating real-time data from news headlines and social forums to generate a "Hype Score," StockIQ provides contextual insights to help novice investors distinguish between genuine market value and social media noise.
 
 ## Current Features
-* **Secure Authentication:** Create an account using an email/password (securely hashed with bcrypt) or bypass registration entirely by logging in with Google OAuth 2.0.
+* **Secure Authentication:** Create an account using an email/password (securely hashed with bcrypt) or bypass registration entirely by logging in with Google OAuth 2.0.  
+
+<p align="center">
+  <img src="images/login.png" width="60%" alt="Login page">
+</p>
+
 * **Personalized Dashboard:** Complete a quick onboarding flow to select up to 5 favorite stocks, which populate your home dashboard with live, real-time data.
+
+<p align="center">
+  <img src="images/dashboard.png" width="70%" alt="Login page">
+</p>
+
 * **Live Ticker Search:** Instantly query valid US stock tickers using the integrated yfinance API.
+
+<p align="center">
+  <img src="images/search.png" width="60%" alt="Login page">
+</p>
+
 * **Hype Score & Sentiment Tagging:** View a visual 0-100 speedometer gauge for any stock. Our backend uses VADER NLP to parse recent news and tag the sentiment as Positive, Neutral, or Negative.
+
+<p align="center">
+  <img src="images/hype_meter.png" width="60%" alt="Login page">
+</p>
+
 * **Trending Hype Display:** Discover new opportunities by viewing stocks that are currently trending with high social media volume across the market.
+
+<p align="center">
+  <img src="images/trending.png" width="60%" alt="Login page">
+</p>
+
 * **Custom Hype Alerts:** Set custom numeric thresholds on specific stocks to receive notifications when market hype exceeds your configured limits.
+
+<p align="center">
+  <img src="images/alerts.png" width="60%" alt="Login page">
+</p>
+
 * **Profile Management:** Securely manage your account details, update your password, or permanently delete your data and watchlist preferences.
+
+<p align="center">
+  <img src="images/profile_management.png" width="60%" alt="Login page">
+</p>
 
 ## Getting Started (Local Development)
 
