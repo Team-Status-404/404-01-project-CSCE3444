@@ -1,9 +1,13 @@
 import os
-from flask import Flask, jsonify, request
+import requests
+import json
+import time as time_module
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from models.user_management import get_db_connection
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
 from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
@@ -15,6 +19,8 @@ from models.alert_scheduler import start_scheduler
 load_dotenv()
 
 app = Flask(__name__)
+# Simple in-memory cache for news articles (avoids redundant API calls)
+news_cache = {}
 CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 
 # ==========================================
@@ -29,6 +35,14 @@ sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to al
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     start_scheduler(sentiment_engine)
+
+# Configure Gemini AI for the article summarizer
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+gemini_client = None
+gemini_model = None
+if gemini_api_key:
+    gemini_client = genai.Client(api_key=gemini_api_key)
+    gemini_model = 'gemini-2.5-flash'
 
 # home route
 @app.route('/')
@@ -59,7 +73,7 @@ def get_stock_data(ticker):
         target_stock = Stock(ticker_symbol=ticker)
         result = target_stock.fetch_stock_data()
         
-        # If the fetch failed (e.g., invalid ticker), return a 404
+        # If the fetch failed (e.g, invalid ticker), return a 404
         if result.get("status") == "error":
             return jsonify(result), 404
             
@@ -76,6 +90,183 @@ def get_stock_sentiment(ticker):
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/api/stocks/<ticker>/news', methods=['GET'])
+def get_stock_news(ticker):
+    """Returns the latest 5-10 news articles for a given ticker."""
+    try:
+        ticker_upper = ticker.upper()
+        api_key = os.getenv("NEWSDATA_API_KEY")
+        
+        if not api_key:
+            return jsonify({"status": "error", "message": "News API key not configured"}), 500
+
+        # In-memory cache — avoids duplicate API calls within 5 minutes
+        cache_key = f"news_{ticker_upper}"
+        cached = news_cache.get(cache_key)
+        
+        if cached:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": cached, "cached": True}), 200
+
+        # Fetch from NewsData API
+        url = f"https://newsdata.io/api/1/latest?apikey={api_key}&q={ticker_upper}&language=en"
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 429:
+            return jsonify({"status": "error", "message": "News API rate limit reached. Try again shortly."}), 429
+        
+        if response.status_code != 200:
+            return jsonify({"status": "error", "message": "Failed to fetch news"}), 502
+
+        results = response.json().get('results', [])
+        
+        if not results:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": [], "cached": False}), 200
+
+        # Format articles, take up to 10
+        articles = []
+        for art in results[:10]:
+            articles.append({
+                "article_id": art.get("article_id", ""),
+                "headline": art.get("title", "No title"),
+                "source": art.get("source_id", "Unknown"),
+                "published_at": art.get("pubDate", ""),
+                "url": art.get("link", "#"),
+                "sentiment_score": sentiment_engine._vaderEngine.polarity_scores(
+                    f"{art.get('title', '')} {art.get('description', '')}"
+                )['compound']
+            })
+
+        # Save to in-memory cache
+        news_cache[cache_key] = articles
+
+        return jsonify({"status": "success", "ticker": ticker_upper, "articles": articles, "cached": False}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/news/summarize', methods=['POST'])
+def summarize_article():
+    """Accepts article text or URL and returns a 2-3 sentence AI financial summary via Gemini.
+       Also will be using gemini-2.5-flash, since 2.0 will be deprecated in a bit"""
+    if not gemini_client or not gemini_model:
+        return jsonify({"status": "error", "message": "AI summarizer is not configured on this server."}), 503
+
+    data = request.json or {}
+    text = data.get('text', '').strip()
+    url = data.get('url', '').strip()
+
+    if not text and not url:
+        return jsonify({"status": "error", "message": "Missing text or url in request body."}), 400
+
+    content = text if text else f"Article URL: {url}"
+
+    prompt = (
+        "You are a financial analyst assistant. Summarize the following news article in exactly 2-3 sentences, focusing strictly on the financial impact, market implications, and what this means for investors. Be concise and data-driven."
+        f"Article: {content[:3000]} Financial Summary:"
+    )
+
+    try:
+        response = gemini_client.models.generate_content(
+            model=gemini_model,
+            contents=prompt,
+        )
+        summary = response.text.strip()
+        return jsonify({"status": "success", "summary": summary}), 200
+    except Exception as e:
+        print(f"DEBUG: Gemini API error: {e}")
+        return jsonify({"status": "error", "message": "Failed to generate AI summary. Please try again."}), 500
+
+@app.route('/api/news/<ticker>', methods=['GET'])
+def get_news(ticker):
+    """Returns recent news articles for a given ticker."""
+    try:
+        articles = sentiment_engine.get_articles(ticker.upper())
+        return jsonify({"status": "success", "articles": articles}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
+# UC-09: REAL-TIME PRICE ROUTES (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/<ticker>/price', methods=['GET'])
+def get_live_price(ticker):
+    """
+    UC-09 | FR-10: Returns ONLY the current trading price for a stock.
+    Much faster than /api/stock/<ticker> since it skips sentiment and graphs.
+    Performance target: respond within 2.0 seconds (including cache).
+    """
+    try:
+        target_stock = Stock(ticker_symbol=ticker)
+        result = target_stock.fetchLivePrice()
+
+        if result.get("status") == "error":
+            return jsonify(result), 404
+
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/stocks/<ticker>/stream', methods=['GET'])
+def stream_live_price(ticker):
+    """
+    UC-09 | SSE endpoint: Streams live price updates to connected clients.
+    Sends a new price event every 10 seconds.
+    The frontend connects with: const eventSource = new EventSource('/api/stocks/AAPL/stream')
+    """
+    def generate_price_stream(ticker_symbol):
+        """Generator function that yields SSE-formatted price events."""
+        while True:
+            try:
+                target_stock = Stock(ticker_symbol=ticker_symbol)
+                result = target_stock.fetchLivePrice()
+
+                if result.get("status") == "success":
+                    event_data = {
+                        "ticker": result["data"]["ticker"],
+                        "currentPrice": result["data"]["currentPrice"],
+                        "companyName": result["data"]["companyName"],
+                        "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "status": "live"
+                    }
+                else:
+                    # If fetch failed, send a stale status so frontend shows fallback UI
+                    event_data = {
+                        "ticker": ticker_symbol.upper(),
+                        "currentPrice": None,
+                        "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "status": "stale"
+                    }
+
+                # SSE format: "data: {json}\n\n"
+                yield f"data: {json.dumps(event_data)}\n\n"
+
+            except Exception as e:
+                # Send error event so frontend can show "Price Stale" or "Market Closed" UI
+                error_data = {
+                    "ticker": ticker_symbol.upper(),
+                    "currentPrice": None,
+                    "timestamp": time_module.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "status": "error",
+                    "message": str(e)
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+
+            # Wait 10 seconds before sending next update
+            time_module.sleep(10)
+
+    return Response(
+        generate_price_stream(ticker),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'  # Prevents Nginx from buffering SSE
+        }
+    )
 
 # ==========================================
 # 2. PORTFOLIO ROUTES. (Krish's Route)
@@ -292,6 +483,35 @@ def delete_account():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/user/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """Returns the authenticated user's profile including onboarding status."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT username, email, has_completed_onboarding FROM users WHERE id = %s",
+            (request.current_user_id,)
+        )
+        row = cur.fetchone()
+        cur.close()
+        if row is None:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        username, email, has_completed_onboarding = row
+        return jsonify({
+            "status": "success",
+            "username": username,
+            "email": email,
+            "has_completed_onboarding": has_completed_onboarding,
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 @app.route('/api/user/profile', methods=['PUT'])
 @token_required
 def update_profile():
@@ -341,6 +561,28 @@ def reset_password():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/user/onboarding', methods=['PATCH'])
+@token_required
+def complete_onboarding():
+    """Marks the interactive tour as completed for the authenticated user."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET has_completed_onboarding = TRUE WHERE id = %s",
+            (request.current_user_id,)
+        )
+        conn.commit()
+        cur.close()
+        return jsonify({"status": "success", "message": "Onboarding tour marked as completed"}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # starts the flask server in development mode
 if __name__ == '__main__':

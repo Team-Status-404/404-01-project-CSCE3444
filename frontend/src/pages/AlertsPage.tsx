@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import TopBar from "../components/TopBar";
+import InfoTooltip from "../components/InfoTooltip";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { TOOLTIP_COPY } from "../constants/tooltipCopy";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -144,7 +146,9 @@ export default function AlertsPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1.5fr", padding: "10px 16px", background: "rgba(148,163,184,0.05)", borderRadius: 8, marginBottom: 8 }}>
               {["Ticker", "Threshold", "Direction", "Status", "Actions"].map((h) => (
-                <span key={h} style={{ color: "#94a3b8", fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</span>
+                <span key={h} style={{ color: "#94a3b8", fontSize: 12, fontWeight: 600, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 4 }}>
+                  {h}{h === "Threshold" && <InfoTooltip content={TOOLTIP_COPY.ALERTS_THRESHOLD} />}
+                </span>
               ))}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

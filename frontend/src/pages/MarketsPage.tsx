@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
+import InfoTooltip from '../components/InfoTooltip';
 import { useAuth } from '../context/AuthContext';
+import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Link } from 'react-router-dom';
 
@@ -80,7 +82,10 @@ export default function MarketsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: '2rem' }}>S&P 500 Index</h2>
-                <p className="muted-label" style={{ margin: 0 }}>Market Overview (Price vs. Sentiment)</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <p className="muted-label" style={{ margin: 0 }}>Market Overview (Price vs. Sentiment)</p>
+                  <InfoTooltip content={TOOLTIP_COPY.MARKET_SENTIMENT} />
+                </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <strong style={{ fontSize: '2rem', display: 'block' }}>5,104.76</strong>
@@ -168,7 +173,10 @@ export default function MarketsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <article className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Trending Stocks</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <h3 style={{ margin: 0 }}>Trending Stocks</h3>
+                <InfoTooltip content={TOOLTIP_COPY.TRENDING_STOCKS} />
+              </div>
             </div>
             
             {/* Feedback Banner */}
@@ -225,30 +233,33 @@ export default function MarketsPage() {
                       </span>
                     </div>
                     
-                    {/* Add to Watchlist Button */}
-                    <button
-                      onClick={(e) => handleAddStock(e, stock.ticker)}
-                      disabled={addingTicker === stock.ticker}
-                      style={{
-                        background: '#334155',
-                        color: '#f8fafc',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: addingTicker === stock.ticker ? 'not-allowed' : 'pointer',
-                        fontSize: '1.2rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = '#38bdf8'}
-                      onMouseOut={(e) => e.currentTarget.style.background = '#334155'}
-                      title="Add to Watchlist"
-                    >
-                      {addingTicker === stock.ticker ? '...' : '+'}
-                    </button>
+                    {/* Add to Watchlist Button + tooltip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <button
+                        onClick={(e) => handleAddStock(e, stock.ticker)}
+                        disabled={addingTicker === stock.ticker}
+                        style={{
+                          background: '#334155',
+                          color: '#f8fafc',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: addingTicker === stock.ticker ? 'not-allowed' : 'pointer',
+                          fontSize: '1.2rem',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = '#38bdf8'}
+                        onMouseOut={(e) => e.currentTarget.style.background = '#334155'}
+                        title="Add to Watchlist"
+                      >
+                        {addingTicker === stock.ticker ? '...' : '+'}
+                      </button>
+                      <InfoTooltip content={TOOLTIP_COPY.ADD_TO_WATCHLIST} />
+                    </div>
                   </div>
                 </Link>
               ))}

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import InfoTooltip from "./InfoTooltip";
+import { TOOLTIP_COPY } from "../constants/tooltipCopy";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -203,6 +205,7 @@ export default function AlertBell({ ticker }: AlertBellProps) {
 
   return (
     <>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <button
         onClick={() => setShowModal(true)}
         title={`Set alert for ${ticker}`}
@@ -234,8 +237,9 @@ export default function AlertBell({ ticker }: AlertBellProps) {
       >
         🔔 Set Alert
       </button>
+      <InfoTooltip content={TOOLTIP_COPY.SET_ALERT} />
+      </div>
 
-      {/* ✅ FIX: Render the modal when showModal is true */}
       {showModal && <AlertModal ticker={ticker} onClose={() => setShowModal(false)} />}
     </>
   );
