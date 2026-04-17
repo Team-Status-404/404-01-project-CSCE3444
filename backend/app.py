@@ -15,7 +15,12 @@ from models.alert_scheduler import start_scheduler
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
+app = Flask(__name__)
+CORS(app, origins=[
+    os.getenv("FRONTEND_URL", ""),
+    "http://localhost:5173",
+    "http://localhost:5174",
+])
 
 # ==========================================
 # SERVER INITIALIZATION
