@@ -17,7 +17,7 @@ load_dotenv()
 app = Flask(__name__)
 app = Flask(__name__)
 CORS(app, origins=[
-    os.getenv("FRONTEND_URL", ""),
+    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
     "http://localhost:5173",
     "http://localhost:5174",
 ])
