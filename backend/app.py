@@ -10,7 +10,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
+# Change this import line in app.py to include get_trending_stocks_data
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_trending_stocks_data
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -65,6 +66,37 @@ def search_stocks():
     status_code = 200 if result["status"] == "success" else 500
     return jsonify(result), status_code
 
+@app.route('/api/stocks/trending', methods=['GET'])
+def trending_stocks():
+    """
+    UC-08 | FR-08: Route for the frontend Discovery view.
+    Returns an array of the current top trending stocks based on Hype Score.
+    """
+    try:
+        # Allows the frontend to pass a '?limit=10' query param if they want more than 5
+        limit_param = request.args.get('limit', default=5, type=int)
+        
+        trending_list = get_trending_stocks_data(limit=limit_param)
+        
+        # If the DB returns an empty list, it likely means no data has been cached yet today
+        if not trending_list:
+            return jsonify({
+                "status": "success",
+                "message": "No trending data available in the last 24 hours.",
+                "data": []
+            }), 200
+            
+        return jsonify({
+            "status": "success",
+            "data": trending_list
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"An internal server error occurred: {str(e)}"
+        }), 500
+        
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker): 
     """Fetch stock price, name, and moving averages using the Stock object."""
