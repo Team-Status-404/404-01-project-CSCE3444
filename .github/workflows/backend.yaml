@@ -1,9 +1,7 @@
 name: CI for Backend (Flask/Python)
-
 # Forces GitHub Actions to use Node 24 to prevent deprecation warnings
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 # ------------------------------------------------------------------------------
 # TRIGGERS: When does this workflow run?
 # Keeps the backend pipeline synchronized with the frontend release cycle.
@@ -13,25 +11,22 @@ on:
     branches: [ "main", "dev" ]
     paths:
       - 'backend/**'
-      - '.github/workflows/backend.yaml' # Also run if I edit this specific workflow file
+      - '.github/workflows/backend.yaml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'backend/**'
-      - '.github/workflows/backend.yaml' # Also run if I edit this specific workflow file
-
+      - '.github/workflows/backend.yaml'
 jobs:
   build-and-test:
     # --------------------------------------------------------------------------
     # ENVIRONMENT: What operating system runs this test?
     # --------------------------------------------------------------------------
     runs-on: ubuntu-latest
-
     defaults:
       run:
         # All commands below will execute inside the 'backend' folder
         working-directory: ./backend
-
     steps:
       # Step 1: Pull the repository code into the virtual runner
       - name: Checkout Repository Code
@@ -43,54 +38,97 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
-          cache: 'pip' # Speeds up workflow by caching downloaded pip packages
+          cache: 'pip'
 
       # Step 3: Upgrade pip and install the project's exact requirements
+      # pytest, pytest-cov, and flake8 are already included in requirements.txt
       - name: Install Backend Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flake8  # Installed specifically for CI code quality checks
 
-      # Step 4: Code Quality Check
-      # Flake8 scans the Python files for syntax errors or undefined names.
-      # - select=E9,F63,F7,F82: Targets catastrophic errors that break execution.
-      - name: Enforce Python Code Quality (Linting)
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-
-      # Step 5: Server Startup Verification
-      # This is a critical integration test. It attempts to start the Flask server.
-      # If there is a circular import or a missing package, this step will crash and fail the workflow.
-      - name: Verify Flask Server Startup
+      # Step 4: Run Tests with Coverage
+      # Discovers and runs all test files matching the pattern test_*.py under backend/tests/.
+      # --cov=. measures coverage across the entire backend directory.
+      # --cov-report=term-missing prints uncovered lines directly in the CI log.
+      # If no test files exist yet, pytest will exit successfully with "no tests ran".
+      - name: Run Tests with Coverage
         env:
-          # Injects the secret API key from GitHub Secrets into the virtual environment
-
           # Database Configuration (Supabase PostgreSQL)
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
-          
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # External APIs
           NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
           FINANCE_DATA_KEY: ${{ secrets.FINANCE_DATA_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Flask Configuration
+          FLASK_APP: app.py
+          FLASK_ENV: testing
+          # Google OAuth
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          # Alert Email Configuration
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          # SMTP / Email Configuration
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # Frontend URL (used for password reset redirect)
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+        run: |
+          pytest tests/ --cov=. --cov-report=term-missing -v
+
+      # Step 5: Code Quality Check
+      # Flake8 scans the Python files for syntax errors or undefined names.
+      # - select=E9,F63,F7,F82: Targets catastrophic errors that break execution.
+      - name: Enforce Python Code Quality (Linting)
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      # Step 6: Server Startup Verification
+      # This is a critical integration test. It attempts to start the Flask server.
+      # If there is a circular import or a missing package, this step will crash and fail the workflow.
+      - name: Verify Flask Server Startup
+        env:
+          # Database Configuration (Supabase PostgreSQL)
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # External APIs
+          NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+          FINANCE_DATA_KEY: ${{ secrets.FINANCE_DATA_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Flask Configuration
+          FLASK_APP: app.py
+          FLASK_ENV: production
+          # Google OAuth
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          # Alert Email Configuration
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          # SMTP / Email Configuration
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # Frontend URL (used for password reset redirect)
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
         run: |
           echo "Attempting to start Flask server..."
-          # Start the server in the background using '&'
           python app.py &
-          # Capture the Process ID (PID) of the Flask server
           APP_PID=$!
-          
-          # Wait for 7 seconds to give Flask time to boot and potentially crash
           sleep 7
-          
-          # Check if the process is still running. If not, it crashed.
           if ps -p $APP_PID > /dev/null
           then
              echo "Flask server successfully started and is stable."
-             # Cleanly kill the background process to end the test
              kill $APP_PID
           else
              echo "Flask server crashed during startup."
