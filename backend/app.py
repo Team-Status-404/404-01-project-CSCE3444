@@ -15,6 +15,7 @@ from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
+from models.market_scanner import start_market_scanner # imported new auto scanner for the treding tickers
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
@@ -33,9 +34,14 @@ CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
+
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # Start the alert checker
     start_scheduler(sentiment_engine)
+    
+    # Start the market checker
+    start_market_scanner(sentiment_engine)
 
 # Configure Gemini AI for the article summarizer
 gemini_api_key = os.getenv("GEMINI_API_KEY")
