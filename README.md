@@ -1,11 +1,95 @@
-# 404-01-project-CSCE3444
+# 404-01-project-CSCE3444 (StockIQ)
 
 ![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg?branch=dev)
 ![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg?branch=dev)
 
-**Team Name:** 404
+**Team Name:** Group 404
 
-**Project Idea:** StockIQ is a comprehensive software engineering project designed to provide contextual insights into any U.S.-traded stock.
+**Project Overview:** StockIQ is a financial analytics application designed to quantify public sentiment around specific U.S.-traded stock symbols. By aggregating real-time data from news headlines and social forums to generate a "Hype Score," StockIQ provides contextual insights to help novice investors distinguish between genuine market value and social media noise.
+
+## Current Features
+* **Secure Authentication:** Create an account using an email/password (securely hashed with bcrypt) or bypass registration entirely by logging in with Google OAuth 2.0.  
+
+<p align="center">
+  <img src="images/login.png" width="70%" alt="Login page">
+</p>
+
+* **Personalized Dashboard:** Complete a quick onboarding flow to select up to 5 favorite stocks, which populate your home dashboard with live, real-time data.
+
+<p align="center">
+  <img src="images/dashboard.png" width="90%" alt="Login page">
+</p>
+
+* **Live Ticker Search:** Instantly query valid US stock tickers using the integrated yfinance API.
+
+<p align="center">
+  <img src="images/search.png" width="80%" alt="Login page">
+</p>
+
+* **Hype Score & Sentiment Tagging:** View a visual 0-100 speedometer gauge for any stock. Our backend uses VADER NLP to parse recent news and tag the sentiment as Positive, Neutral, or Negative.
+
+<p align="center">
+  <img src="images/hype_meter.png" width="80%" alt="Login page">
+</p>
+
+* **Trending Hype Display:** Discover new opportunities by viewing stocks that are currently trending with high social media volume across the market.
+
+<p align="center">
+  <img src="images/trending.png" width="80%" alt="Login page">
+</p>
+
+* **Custom Hype Alerts:** Set custom numeric thresholds on specific stocks to receive notifications when market hype exceeds your configured limits.
+
+<p align="center">
+  <img src="images/alerts.png" width="80%" alt="Login page">
+</p>
+
+* **Profile Management:** Securely manage your account details, update your password, or permanently delete your data and watchlist preferences.
+
+<p align="center">
+  <img src="images/profile_management.png" width="70%" alt="Login page">
+</p>
+
+## Getting Started (Local Development)
+
+To run the StockIQ application locally, ensure you have **Python 3.8+** and **Node.js** installed on your machine. You will need to run the backend and frontend in two separate terminal windows.
+
+### 1. Start the Backend (Flask)
+Open a new terminal and navigate to the project root, then run the following commands:
+
+```bash
+cd backend
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the Flask server
+python app.py
+```
+
+### 2. Start the Frontend (React/Vite)
+Open a second terminal window, navigate to the project root, and run:
+
+```bash
+cd frontend
+
+# Install Node dependencies
+npm install
+
+# Start the Vite development server
+npm run dev
+```
+
+The frontend will typically be accessible at `http://localhost:5173/` (check your terminal output for the exact local URL).
 
 ## Team Roster
 
@@ -40,5 +124,4 @@
   * **Phone:** 940 843 7404
 
 ## Project Links
-
-* **Trello Board:** https://trello.com/invite/b/699055a25d002d93008bee54/ATTIb5663ce079b4dbd5a988e69b9a963ac39055F0DD/404-01-project-csce3444
+* **Trello Board:** [StockIQ Sprint Board](https://trello.com/invite/b/699055a25d002d93008bee54/ATTIb5663ce079b4dbd5a988e69b9a963ac39055F0DD/404-01-project-csce3444)

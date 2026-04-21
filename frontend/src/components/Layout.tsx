@@ -25,11 +25,13 @@ export default function Layout({ children }: LayoutProps) {
         }}>
           
           {/* Search Bar Placed here */}
-          <SearchBar />
+          <div data-tour="search-bar" style={{ flex: 1 }}>
+            <SearchBar />
+          </div>
 
           {/* Notifications & Profile */}
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', color: '#94a3b8' }}>
-            <Bell size={20} style={{ cursor: 'pointer' }} onClick={() => navigate('/alerts')} />
+            <Bell data-tour="alerts-bell" size={20} style={{ cursor: 'pointer' }} onClick={() => navigate('/alerts')} />
             <div style={{ 
               width: '32px', 
               height: '32px', 
