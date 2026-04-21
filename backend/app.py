@@ -18,6 +18,8 @@ from models.alert_scheduler import start_scheduler
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
 
+news_cache = {} # add this to pass linting CI
+
 app = Flask(__name__)
 app = Flask(__name__)
 CORS(app, origins=[
