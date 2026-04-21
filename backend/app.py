@@ -11,7 +11,7 @@ from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
 # Change this import line in app.py to include get_trending_stocks_data
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_trending_stocks_data
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_full_discovery_data
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -69,16 +69,16 @@ def search_stocks():
 @app.route('/api/stocks/trending', methods=['GET'])
 def trending_stocks():
     """
-    UC-08 | FR-08: Route for the frontend Discovery view.
+    UC-08 | FR-08: Route for the frontend Discovery view and Markets widget.
     Returns an array of the current top trending stocks based on Hype Score.
     """
     try:
-        # Allows the frontend to pass a '?limit=10' query param if they want more than 5
         limit_param = request.args.get('limit', default=5, type=int)
+        sort_param = request.args.get('sort', default='hype_desc', type=str) # Grabs the sort method
         
-        trending_list = get_trending_stocks_data(limit=limit_param)
+        # Pass both parameters to the new backend function
+        trending_list = get_full_discovery_data(sort_by=sort_param, limit=limit_param)
         
-        # If the DB returns an empty list, it likely means no data has been cached yet today
         if not trending_list:
             return jsonify({
                 "status": "success",
