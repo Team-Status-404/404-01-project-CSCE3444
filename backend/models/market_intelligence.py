@@ -720,15 +720,16 @@ def get_full_discovery_data(sort_by: str = "hype_desc", limit: int = 50) -> list
     UC-08 | FR-08: Enhanced discovery logic for the full-page view.
     Supports dynamic sorting to help users find specific types of opportunities.
     """
-    # Map the frontend sort keys to SQL order clauses
+    # Removed the "m." prefix because the LatestMetrics CTE doesn't use it
     sort_map = {
-        "hype_desc": "m.final_hype_score DESC",
-        "hype_asc": "m.final_hype_score ASC",
-        "volume_desc": "m.social_volume DESC",
-        "ticker_asc": "m.ticker ASC"
+        "hype_desc": "final_hype_score DESC",
+        "hype_asc": "final_hype_score ASC",
+        "volume_desc": "social_volume DESC",
+        "ticker_asc": "ticker ASC"
     }
     
-    order_clause = sort_map.get(sort_by, "m.final_hype_score DESC")
+    # Update fallback here as well
+    order_clause = sort_map.get(sort_by, "final_hype_score DESC")
     
     conn = None
     try:
