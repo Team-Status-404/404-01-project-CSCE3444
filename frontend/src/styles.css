@@ -201,7 +201,15 @@ button, input, select {
 
 /* ─── NEW DISCOVERY ENGINE STYLES (Added for TrendingPage) ──────────────────────────── */
 .discovery-container { max-width: 1200px; margin: 0 auto; }
-.discovery-header-text { font-size: 2rem; font-weight: 800; margin: 0 0 8px 0; background: linear-gradient(to right, #38bdf8, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.discovery-header-text { 
+  font-size: 2rem; 
+  font-weight: 800; 
+  margin: 0 0 8px 0; 
+  background: linear-gradient(to right, #38bdf8, #34d399); 
+  -webkit-background-clip: text; 
+  background-clip: text; /* <-- Add this standard property */
+  -webkit-text-fill-color: transparent; 
+}
 .discovery-controls { display: flex; align-items: center; gap: 12px; background: rgba(30, 41, 59, 0.5); padding: 8px; border-radius: 12px; border: 1px solid rgba(51, 65, 85, 0.5); }
 .discovery-table-header { display: none; } /* Hidden on mobile by default */
 
