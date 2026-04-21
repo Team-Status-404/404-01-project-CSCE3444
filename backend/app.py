@@ -19,9 +19,12 @@ from models.alert_scheduler import start_scheduler
 load_dotenv()
 
 app = Flask(__name__)
-# Simple in-memory cache for news articles (avoids redundant API calls)
-news_cache = {}
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
+app = Flask(__name__)
+CORS(app, origins=[
+    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
+    "http://localhost:5173",
+    "http://localhost:5174",
+])
 
 # ==========================================
 # SERVER INITIALIZATION
