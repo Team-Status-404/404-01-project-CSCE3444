@@ -191,7 +191,73 @@ def get_news(ticker):
         return jsonify({"status": "success", "articles": articles}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+@app.route('/api/stocks/<ticker>/hype-history', methods=['GET'])
+def get_hype_history(ticker):
+    """Returns timestamped hype score history for a given ticker with trend metadata."""
+    ticker_upper = ticker.upper()
+    period = request.args.get('period', '7')
+    
+    # Validate period
+    if period not in ('7', '30', '90'):
+        return jsonify({"status": "error", "message": "Period must be 7, 30, or 90"}), 400
 
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Fetch history for the requested period
+        cur.execute("""
+            SELECT DATE(recorded_at) as date, AVG(score) as avg_score
+            FROM hype_score_history
+            WHERE ticker = %s 
+            AND recorded_at >= CURRENT_TIMESTAMP - INTERVAL '%s days'
+            GROUP BY DATE(recorded_at)
+            ORDER BY date ASC;
+        """, (ticker_upper, int(period)))
+        
+        rows = cur.fetchall()
+        cur.close()
+
+        if not rows:
+            return jsonify({
+                "status": "success",
+                "ticker": ticker_upper,
+                "period": period,
+                "history": [],
+                "trend": {"direction": "neutral", "change_pct": 0.0},
+                "message": "Not enough data yet."
+            }), 200
+
+        history = [{"date": str(row[0]), "score": float(row[1])} for row in rows]
+
+        # Calculate trend metadata
+        oldest_score = history[0]["score"]
+        newest_score = history[-1]["score"]
+        
+        if oldest_score == 0:
+            change_pct = 0.0
+        else:
+            change_pct = round(((newest_score - oldest_score) / oldest_score) * 100, 2)
+
+        direction = "up" if change_pct > 0 else "down" if change_pct < 0 else "neutral"
+
+        return jsonify({
+            "status": "success",
+            "ticker": ticker_upper,
+            "period": period,
+            "history": history,
+            "trend": {
+                "direction": direction,
+                "change_pct": change_pct
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 # ==========================================
 # UC-09: REAL-TIME PRICE ROUTES (Jeel Patel - Sprint 3)
 # ==========================================
