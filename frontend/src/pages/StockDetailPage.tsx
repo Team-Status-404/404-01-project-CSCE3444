@@ -3,9 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import HypeMeter from '../components/HypeMeter';
+import HypeTrend from '../components/HypeTrend';
 import AlertBell from '../components/AlertBell';
 import { useAuth } from '../context/AuthContext';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -446,6 +448,8 @@ export default function StockDetailPage() {
           </article>
 
           {/* Bottom Metrics */}
+          {/* Hype Score Trend (UC-18) */}
+           <HypeTrend ticker={displayTicker} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             <article className="card stat-card">
               <p className="muted-label">Volatility</p>
