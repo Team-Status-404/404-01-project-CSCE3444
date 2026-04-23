@@ -10,7 +10,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, compare_stocks
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -21,12 +21,9 @@ load_dotenv()
 news_cache = {} # add this to pass linting CI
 
 app = Flask(__name__)
-app = Flask(__name__)
-CORS(app, origins=[
-    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
-    "http://localhost:5173",
-    "http://localhost:5174",
-])
+# Simple in-memory cache for news articles (avoids redundant API calls)
+news_cache = {}
+CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -272,6 +269,42 @@ def stream_live_price(ticker):
             'X-Accel-Buffering': 'no'  # Prevents Nginx from buffering SSE
         }
     )
+
+# ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/compare', methods=['POST'])
+def compare_stocks_route():
+    """
+    UC-17 | FR-17a/b: Accepts 2-4 tickers and returns side-by-side
+    comparison metrics + normalized historical data for overlay chart.
+    
+    Request body: { "tickers": ["AAPL", "MSFT", "GOOGL"] }
+    Optional:     { "tickers": [...], "period": "3mo" }
+    
+    Performance target: respond within 3.0 seconds for up to 4 stocks.
+    """
+    data = request.json or {}
+    tickers = data.get('tickers', [])
+    period = data.get('period', '1mo')
+
+    if not tickers:
+        return jsonify({"status": "error", "message": "Missing 'tickers' in request body."}), 400
+
+    if not isinstance(tickers, list):
+        return jsonify({"status": "error", "message": "'tickers' must be a list."}), 400
+
+    for t in tickers:
+        if not isinstance(t, str) or not t.strip():
+            return jsonify({"status": "error", "message": f"Invalid ticker value: {t}"}), 400
+
+    result = compare_stocks(tickers, period)
+
+    if result.get("status") == "error":
+        return jsonify(result), 400
+
+    return jsonify(result), 200
 
 # ==========================================
 # 2. PORTFOLIO ROUTES. (Krish's Route)
