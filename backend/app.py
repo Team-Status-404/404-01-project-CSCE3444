@@ -23,7 +23,11 @@ news_cache = {} # add this to pass linting CI
 app = Flask(__name__)
 # Simple in-memory cache for news articles (avoids redundant API calls)
 news_cache = {}
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
+CORS(app, origins=[
+    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
+    "http://localhost:5173",
+    "http://localhost:5174",
+])
 
 # ==========================================
 # SERVER INITIALIZATION
