@@ -274,39 +274,26 @@ def stream_live_price(ticker):
 # UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
 # ==========================================
 
+# ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
 @app.route('/api/stocks/compare', methods=['POST'])
 def compare_stocks_route():
     """
-    UC-17 | FR-17a/b: Accepts 2-4 tickers and returns side-by-side
-    comparison metrics + normalized historical data for overlay chart.
-    
-    Request body: { "tickers": ["AAPL", "MSFT", "GOOGL"] }
-    Optional:     { "tickers": [...], "period": "3mo" }
-    
-    Performance target: respond within 3.0 seconds for up to 4 stocks.
+    Jeel Patel - Sprint 3 | UC-17
+    Bridge for the Comparison View.
     """
     data = request.json or {}
     tickers = data.get('tickers', [])
-    period = data.get('period', '1mo')
-
-    if not tickers:
-        return jsonify({"status": "error", "message": "Missing 'tickers' in request body."}), 400
-
-    if not isinstance(tickers, list):
-        return jsonify({"status": "error", "message": "'tickers' must be a list."}), 400
-
-    for t in tickers:
-        if not isinstance(t, str) or not t.strip():
-            return jsonify({"status": "error", "message": f"Invalid ticker value: {t}"}), 400
-
-    result = compare_stocks(tickers, period)
-
-    if result.get("status") == "error":
-        return jsonify(result), 400
-
+    
+    if not tickers or len(tickers) < 1:
+        return jsonify({"status": "error", "message": "No tickers provided"}), 400
+        
+    result = compare_stocks(tickers)
     return jsonify(result), 200
 
-# ==========================================
+
 # 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
