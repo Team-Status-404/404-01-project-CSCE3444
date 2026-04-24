@@ -10,7 +10,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, compare_stocks
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -21,7 +21,8 @@ load_dotenv()
 news_cache = {} # add this to pass linting CI
 
 app = Flask(__name__)
-app = Flask(__name__)
+# Simple in-memory cache for news articles (avoids redundant API calls)
+news_cache = {}
 CORS(app, origins=[
     os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
     "http://localhost:5173",
@@ -274,6 +275,29 @@ def stream_live_price(ticker):
     )
 
 # ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+# ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/compare', methods=['POST'])
+def compare_stocks_route():
+    """
+    Jeel Patel - Sprint 3 | UC-17
+    Bridge for the Comparison View.
+    """
+    data = request.json or {}
+    tickers = data.get('tickers', [])
+    
+    if not tickers or len(tickers) < 1:
+        return jsonify({"status": "error", "message": "No tickers provided"}), 400
+        
+    result = compare_stocks(tickers)
+    return jsonify(result), 200
+
+
 # 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
