@@ -2,9 +2,9 @@
 
 <div align="center">
 
-[![Website](https://img.shields.io/badge/Website-stockiq--nu.vercel.app-00853E?style=flat-square)](https://stockiq-nu.vercel.app/)
-[![Frontend Status](https://img.shields.io/website?url=https%3A%2F%2Fstockiq-nu.vercel.app%2F&label=Frontend&style=flat-square)](https://stockiq-nu.vercel.app/)
-[![Backend Status](https://img.shields.io/website?url=https%3A%2F%2Fstockiq-353106949537.us-south1.run.app%2F&label=Backend&style=flat-square)](https://stockiq-353106949537.us-south1.run.app/)
+<a href="https://stockiq-nu.vercel.app/"><img src="https://img.shields.io/badge/Website-stockiq--nu.vercel.app-00853E?style=flat-square" alt="Website" height="25"></a>
+<a href="https://stockiq-nu.vercel.app/"><img src="https://img.shields.io/website?url=https%3A%2F%2Fstockiq-nu.vercel.app%2F&label=Frontend&style=flat-square" alt="Frontend Status" height="25"></a>
+<a href="https://stockiq-353106949537.us-south1.run.app/"><img src="https://img.shields.io/website?url=https%3A%2F%2Fstockiq-353106949537.us-south1.run.app%2F&label=Backend&style=flat-square" alt="Backend Status" height="25"></a>
 
 </div>
 
