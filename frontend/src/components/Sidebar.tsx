@@ -22,9 +22,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <img src="/logo.png" alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
+        <img src="/logo.png" alt="StockIq Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
         <div>
-          <p className="brand-name">StockIQ</p>
+          <h1 className="brand-name">StockIQ</h1>
           <p className="brand-subtitle">Fintech UI</p>
         </div>
       </div>
