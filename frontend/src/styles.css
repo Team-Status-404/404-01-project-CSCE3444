@@ -533,3 +533,42 @@ input {
 .tippy-box[data-theme~='stockiq'][data-placement^='right'] > .tippy-arrow::before {
   border-right-color: #1e293b;
 }
+
+/* ─── Enhanced divergence warning tooltip for high contrast (UC-09) ────── */
+#tooltip-divergence,
+#tooltip-divergence-detail {
+  background-color: #b91c1c !important;
+  border-color: #7f1d1d !important;
+  color: #ffffff !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 13px !important;
+}
+
+#tooltip-divergence:hover,
+#tooltip-divergence:focus,
+#tooltip-divergence-detail:hover,
+#tooltip-divergence-detail:focus {
+  background-color: #dc2626 !important;
+  border-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+/* ─── Tour info tooltip sizing (UC-14) ────────────────────────────────── */
+#tour-info-tooltip-demo {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 12px !important;
+}
+
+/* ─── Dashboard MA tooltip styling ────────────────────────────────────── */
+#tooltip-dashboard-ma {
+  color: #ffffff !important;
+  border-color: #94a3b8 !important;
+}
+
+#tooltip-dashboard-ma:hover,
+#tooltip-dashboard-ma:focus {
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+}

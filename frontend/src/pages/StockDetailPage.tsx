@@ -353,7 +353,7 @@ export default function StockDetailPage() {
 
             {/* Visual Warning Alert Banner (FR-03) */}
             {stockData?.divergence_warning_active && (
-              <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+              <div style={{ backgroundColor: '#b91c1c', color: '#ffffff', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                 <span>⚠️</span> The price trend and sentiment trend have critically diverged.
                 <InfoTooltip content={TOOLTIP_COPY.DIVERGENCE_WARNING} id="tooltip-divergence-detail" />
               </div>

@@ -131,13 +131,48 @@ def check_alerts(sentiment_engine):
         if conn:
             conn.close()
 
+def record_daily_hype_scores(sentiment_engine):
+    """
+    Runs once daily. Records the current hype score for all 
+    tracked stocks into the hype_score_history table.
+    """
+    print("[Scheduler] Recording daily hype scores...")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT ticker FROM watchlist WHERE alert_enabled = TRUE;")
+        tickers = [row[0] for row in cur.fetchall()]
+        cur.close()
 
+        for ticker in tickers:
+            try:
+                result = sentiment_engine.calculateHypeScore(ticker)
+                score = result.get("hype_score", 0)
+
+                conn2 = get_db_connection()
+                cur2 = conn2.cursor()
+                cur2.execute(
+                    "INSERT INTO hype_score_history (ticker, score) VALUES (%s, %s);",
+                    (ticker, score)
+                )
+                conn2.commit()
+                cur2.close()
+                conn2.close()
+                print(f"[Scheduler] Recorded hype score {score} for {ticker}")
+            except Exception as e:
+                print(f"[Scheduler] Error recording score for {ticker}: {e}")
+
+    except Exception as e:
+        print(f"[Scheduler] DB error in daily recorder: {e}")
+    finally:
+        if conn:
+            conn.close()
+            
 def start_scheduler(sentiment_engine):
-    """
-    Starts the background scheduler when Flask starts.
-    Runs check_alerts every 5 minutes.
-    """
     scheduler = BackgroundScheduler()
+    
+    # Every 5 minutes — check alerts
     scheduler.add_job(
         func=lambda: check_alerts(sentiment_engine),
         trigger="interval",
@@ -145,6 +180,17 @@ def start_scheduler(sentiment_engine):
         id="alert_checker",
         replace_existing=True,
     )
+    
+    # Once daily — record hype scores to history
+    scheduler.add_job(
+        func=lambda: record_daily_hype_scores(sentiment_engine),
+        trigger="interval",
+        hours=24,
+        id="daily_hype_recorder",
+        replace_existing=True,
+    )
+    
     scheduler.start()
     print("[Scheduler] Alert checker started — running every 5 minutes.")
-    return scheduler
+    print("[Scheduler] Daily hype recorder started — running every 24 hours.")
+    return scheduler            

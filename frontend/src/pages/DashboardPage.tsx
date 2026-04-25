@@ -185,7 +185,7 @@ export default function DashboardPage() {
       {/* --- WATCHLIST GRID --- */}
       <section className="section-block" style={{ marginTop: '20px' }}>
         <div data-tour="watchlist-section" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 15 }}>
-          <h3 style={{ margin: 0 }}>My Watchlist</h3>
+          <h2 style={{ margin: 0 }}>My Watchlist</h2>
           <InfoTooltip content={TOOLTIP_COPY.WATCHLIST_SECTION} id="tour-info-tooltip-demo" />
         </div>
         
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                 >
                   {/* Visual Warning Alert Banner (FR-03) combined with UC-14 info tooltips */}
                   {stock.divergence_warning_active && (
-                    <div data-tour="divergence-warning" style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#ef4444', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center', padding: '4px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <div data-tour="divergence-warning" style={{ position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#b91c1c', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center', padding: '4px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <span>⚠️ DIVERGENCE WARNING</span>
                       <InfoTooltip content={TOOLTIP_COPY.DIVERGENCE_WARNING} id="tooltip-divergence" />
                     </div>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#94a3b8' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      5D MA <InfoTooltip content={TOOLTIP_COPY.DASHBOARD_MA} />:
+                      5D MA <InfoTooltip content={TOOLTIP_COPY.DASHBOARD_MA} id="tooltip-dashboard-ma" />:
                     </span>
                     <span>${stock.ma_5_day.toFixed(2)}</span>
                   </div>
