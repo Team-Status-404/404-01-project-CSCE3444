@@ -1,7 +1,13 @@
 # 404-01-project-CSCE3444 (StockIQ)
 
-![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg?branch=dev)
-![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg?branch=dev)
+<div align="center">
+
+[![Website](https://img.shields.io/badge/Website-stockiq--nu.vercel.app-00853E?style=flat-square)](https://stockiq-nu.vercel.app/)
+[![Frontend Status](https://img.shields.io/website?url=https%3A%2F%2Fstockiq-nu.vercel.app%2F&label=Frontend&style=flat-square)](https://stockiq-nu.vercel.app/)
+[![Backend Status](https://img.shields.io/website?url=https%3A%2F%2Fstockiq-353106949537.us-south1.run.app%2F&label=Backend&style=flat-square)](https://stockiq-353106949537.us-south1.run.app/)
+
+</div>
+
 
 **Team Name:** Group 404
 
