@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
       {/* --- WATCHLIST GRID --- */}
       <section className="section-block" style={{ marginTop: '20px' }}>
-        <h3 style={{ margin: '0 0 15px 0' }}>My Watchlist</h3>
+        <h2 style={{ margin: '0 0 15px 0' }}>My Watchlist</h2>
         
         {watchlist.length === 0 && !error ? (
           <p style={{ color: '#94a3b8' }}>You aren't tracking any stocks yet. Go to Markets to add some!</p>
