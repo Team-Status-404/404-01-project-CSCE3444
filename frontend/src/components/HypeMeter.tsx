@@ -166,12 +166,12 @@ export default function HypeMeter({ initialTicker = "NVDA" }: { initialTicker?: 
       {/* Footer Stats */}
       <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #1e293b", paddingTop: 15, marginTop: 10 }}>
         <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Sentiment</div>
+          <div style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase" }}>Sentiment</div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.sentiment}</div>
         </div>
         <div style={{ width: 1, background: "#1e293b" }} />
         <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Signals</div>
+          <div style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase" }}>Signals</div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.headline_count} detected</div>
         </div>
       </div>

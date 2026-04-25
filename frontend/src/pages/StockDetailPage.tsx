@@ -509,7 +509,7 @@ export default function StockDetailPage() {
                           color: '#38bdf8',
                           padding: '3px 10px',
                           borderRadius: '12px',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           cursor: 'pointer',
                           fontWeight: 'bold',
                           whiteSpace: 'nowrap',
@@ -588,7 +588,7 @@ export default function StockDetailPage() {
             <div style={{ marginBottom: '20px', paddingRight: '32px' }}>
               <span style={{
                 display: 'inline-block',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 'bold',
                 color: '#38bdf8',
                 background: 'rgba(56, 189, 248, 0.1)',
