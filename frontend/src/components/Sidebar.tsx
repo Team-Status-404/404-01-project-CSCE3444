@@ -24,7 +24,7 @@ export default function Sidebar() {
       <div className="brand-block">
         <img src="/logo.png" alt="StockIq Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
         <div>
-          <h1 className="brand-name">StockIQ</h1>
+          <span className="brand-name">StockIQ</span>
           <p className="brand-subtitle">Fintech UI</p>
         </div>
       </div>

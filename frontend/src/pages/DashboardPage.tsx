@@ -185,7 +185,7 @@ export default function DashboardPage() {
       {/* --- WATCHLIST GRID --- */}
       <section className="section-block" style={{ marginTop: '20px' }}>
         <div data-tour="watchlist-section" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 15 }}>
-          <h3 style={{ margin: 0 }}>My Watchlist</h3>
+          <h2 style={{ margin: 0 }}>My Watchlist</h2>
           <InfoTooltip content={TOOLTIP_COPY.WATCHLIST_SECTION} id="tour-info-tooltip-demo" />
         </div>
         
