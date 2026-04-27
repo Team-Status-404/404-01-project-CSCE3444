@@ -152,6 +152,7 @@ export default function DashboardPage() {
         setError(data.message || `Failed to remove ${tickerToRemove}.`);
       }
     } catch (err) {
+      console.error("Delete ticker error:", err);
       setError("Network error: Could not reach the server to delete item.");
     }
   };
