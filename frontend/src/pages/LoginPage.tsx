@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const { login, register, googleLogin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // To catch redirect states
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
@@ -14,17 +15,42 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in when visiting this page, redirect to dashboard
+  // Check if we were redirected here with a success message
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+
   useEffect(() => {
+    // Only redirect if they are ALREADY logged in when the page first loads
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // <-- The empty array stops it from firing after a new login
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccessMessage(''); // Clears the success message on submit
     setLoading(true);
+
+    // --- FRONTEND PASSWORD VALIDATION (Only on Sign Up) ---
+    if (isSignUp) {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters.');
+        setLoading(false); // Make sure to stop loading if we hit an error
+        return; 
+      }
+      if (password.length > 72) {
+        setError('Password must be at most 72 characters.');
+        setLoading(false);
+        return; 
+      }
+      // Regex check for at least one special character
+      if (!/[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?`~]/.test(password)) {
+        setError('Password must contain at least one special character.');
+        setLoading(false);
+        return; 
+      }
+    }
 
     try {
       const result = isSignUp
@@ -86,6 +112,9 @@ export default function LoginPage() {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
+          {/* Display success message if redirected from reset password */}
+          {successMessage && <div className="form-success" style={{ color: 'green', marginBottom: '10px' }}>{successMessage}</div>}
+          
           {isSignUp && (
             <label>
               Username
@@ -120,6 +149,15 @@ export default function LoginPage() {
               required
             />
           </label>
+
+          {/* Forgot Password Link (Should Only show on Sign In Page) */}
+          {!isSignUp && (
+            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+              <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: '#007bff' }}>
+                Forgot Password?
+              </Link>
+            </div>
+          )}
 
           {error && <p className="form-error">{error}</p>}
 

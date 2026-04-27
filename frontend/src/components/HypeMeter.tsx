@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import InfoTooltip from "./InfoTooltip";
+import { TOOLTIP_COPY } from "../constants/tooltipCopy";
 
 // ─── TYPESCRIPT DEFINITIONS ────────────────────────────────────────────────
 interface HypeData {
@@ -15,16 +17,10 @@ interface ColorConfig {
   label: string;
 }
 
-interface Alert {
-  ticker: string;
-  direction: "above" | "below";
-  threshold: number;
-}
-
 // ─── LIVE FLASK BACKEND ────────────────────────────────────────────────────
 async function fetchHypeScore(ticker: string): Promise<HypeData> {
   try {
-    const response = await fetch(`http://localhost:5000/api/sentiment/${ticker}`);
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/sentiment/${ticker}`);
     if (!response.ok) throw new Error('Network response was not ok');
     
     const data = await response.json();
@@ -61,49 +57,18 @@ function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-// ─── ALERT PANEL COMPONENT ─────────────────────────────────────────────────
-interface AlertPanelProps {
-  ticker: string;
-  onClose: () => void;
-  onSave: (alert: Alert) => void;
-}
-
-function AlertPanel({ ticker, onClose, onSave }: AlertPanelProps) {
-  const [direction, setDirection] = useState<"above" | "below">("above");
-  const [threshold, setThreshold] = useState<number>(80);
-
-  return (
-    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(10,14,23,0.9)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 10 }}>
-      <div style={{ background: "#1a2236", padding: 20, borderRadius: 12, width: "80%", border: "1px solid #2a3441", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
-        <h4 style={{ margin: "0 0 15px 0", color: "#fff" }}>Set Alert for {ticker}</h4>
-        
-        <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
-          <button onClick={() => setDirection("above")} style={{ flex: 1, padding: "8px", background: direction === "above" ? "#38bdf8" : "#2a3441", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>Above</button>
-          <button onClick={() => setDirection("below")} style={{ flex: 1, padding: "8px", background: direction === "below" ? "#38bdf8" : "#2a3441", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>Below</button>
-        </div>
-        
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", color: "#8892a0", fontSize: 12, marginBottom: 5 }}>Threshold Score (0-100)</label>
-          <input type="range" min="0" max="100" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} style={{ width: "100%" }} />
-          <div style={{ textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "bold", marginTop: 5 }}>{threshold}</div>
-        </div>
-        
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "10px", background: "transparent", color: "#8892a0", border: "1px solid #3a4556", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
-          <button onClick={() => { onSave({ ticker, direction, threshold }); onClose(); }} style={{ flex: 1, padding: "10px", background: "#38bdf8", color: "#000", fontWeight: "bold", border: "none", borderRadius: 6, cursor: "pointer" }}>Save</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── MAIN COMPONENT ────────────────────────────────────────────────────────
-export default function HypeMeter() {
-  const [ticker, setTicker] = useState<string>("NVDA");
+// Note: We accept an optional 'initialTicker' prop so the parent page can tell the gauge what to show.
+export default function HypeMeter({ initialTicker = "NVDA" }: { initialTicker?: string }) {
+  const [ticker, setTicker] = useState<string>(initialTicker);
   const [data, setData] = useState<HypeData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [showAlert, setShowAlert] = useState<boolean>(false);
-  const [savedAlerts, setSavedAlerts] = useState<Alert[]>([]);
+
+  // Update the local ticker state if the parent page changes the initialTicker prop
+  useEffect(() => {
+    setTicker(initialTicker);
+  }, [initialTicker]);
 
   useEffect(() => {
     let active = true;
@@ -150,7 +115,7 @@ export default function HypeMeter() {
   const endPt = polarToXY(cx, cy, r, endAngle);
   const currentPt = polarToXY(cx, cy, r, currentAngle);
 
-  // fixed the guage going out of proportion
+  // fixed the gauge going out of proportion
   const largeArcFlag = (score / 100) * totalAngle > 180 ? 1 : 0;
   const trackArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 1 1 ${endPt.x} ${endPt.y}`;
   const fillArc = `M ${startPt.x} ${startPt.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${currentPt.x} ${currentPt.y}`;
@@ -164,9 +129,10 @@ export default function HypeMeter() {
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorConf.main, boxShadow: `0 0 8px ${colorConf.glow}` }} />
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>{data.ticker}</span>
         </div>
-        <button onClick={() => setShowAlert(true)} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 8px", fontSize: 12, cursor: "pointer", transition: "0.2s" }}>
-          + Alert
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Hype Score</span>
+          <InfoTooltip content={TOOLTIP_COPY.HYPE_SCORE} id="tooltip-hype-score" />
+        </div>
       </div>
 
       {/* Input */}
@@ -206,7 +172,10 @@ export default function HypeMeter() {
       {/* Footer Stats */}
       <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #1e293b", paddingTop: 15, marginTop: 10 }}>
         <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase" }}>Sentiment</div>
+          <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+            Sentiment
+            <InfoTooltip content={TOOLTIP_COPY.HYPE_SENTIMENT} id="tooltip-hype-sentiment" />
+          </div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{data.sentiment}</div>
         </div>
         <div style={{ width: 1, background: "#1e293b" }} />
@@ -216,26 +185,6 @@ export default function HypeMeter() {
         </div>
       </div>
 
-      {/* Alerts List */}
-      {savedAlerts.length > 0 && (
-        <div style={{ marginTop: 15, background: "#1e293b", borderRadius: 8, padding: 10 }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase" }}>Active Alerts</div>
-          {savedAlerts.map((a, i) => {
-            const c = scoreToColor(a.threshold);
-            return (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < savedAlerts.length - 1 ? "1px solid #334155" : "none" }}>
-                <span style={{ fontSize: 12, color: "#fff" }}>{a.ticker}</span>
-                <span style={{ fontSize: 12, color: c.main }}>{a.direction === "above" ? "▲" : "▼"} {a.threshold}</span>
-                <button onClick={() => setSavedAlerts(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>✕</button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {showAlert && (
-        <AlertPanel ticker={ticker} onClose={() => setShowAlert(false)} onSave={(alert) => setSavedAlerts(prev => [...prev.filter(a => a.ticker !== alert.ticker), alert])} />
-      )}
     </div>
   );
 }

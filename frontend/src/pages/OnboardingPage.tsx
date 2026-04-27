@@ -57,7 +57,7 @@ export default function OnboardingPage() {
     
     try {
       for (const ticker of selectedStocks) {
-        const res = await fetch(`http://localhost:5000/api/watchlist/add`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/add`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -94,6 +94,7 @@ export default function OnboardingPage() {
       
     } catch (err) {
       // This catch block only triggers if the network completely fails or the backend crashes
+      console.error('Error:', err);
       setError('A network error occurred. Please check your connection.');
       setIsSaving(false);
     }
