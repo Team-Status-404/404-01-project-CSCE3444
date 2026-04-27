@@ -87,8 +87,9 @@ export default function SearchBar() {
       
       {/* Search Input */}
       <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
-      <input 
-        type="text" 
+      <input
+        type="text"
+        aria-label="Search stocks, news"
         value={query}
         onChange={handleInputChange}
         onFocus={() => { if (query.trim()) setShowDropdown(true); }}

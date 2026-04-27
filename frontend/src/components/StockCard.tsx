@@ -109,7 +109,11 @@ export default function StockCard({ stock }: StockCardProps) {
           <p className={isUp ? 'positive-text' : 'negative-text'}>{stock.change} today</p>
         </div>
 
-        <Link to={`/stock/${stock.symbol}`} className="secondary-link">
+        <Link
+          to={`/stock/${stock.symbol.toLowerCase()}`}
+          className="secondary-link"
+          aria-label={`View ${stock.symbol} detail`}
+        >
           View Detail
         </Link>
       </div>

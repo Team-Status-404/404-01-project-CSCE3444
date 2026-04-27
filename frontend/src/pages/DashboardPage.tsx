@@ -280,7 +280,7 @@ export default function DashboardPage() {
             marginBottom: 15,
           }}
         >
-          <h3 style={{ margin: 0 }}>My Watchlist</h3>
+          <h2 style={{ margin: 0 }}>My Watchlist</h2>
           <InfoTooltip
             content={TOOLTIP_COPY.WATCHLIST_SECTION}
             id="tour-info-tooltip-demo"
@@ -334,7 +334,7 @@ export default function DashboardPage() {
                         top: 0,
                         left: 0,
                         right: 0,
-                        backgroundColor: "#ef4444",
+                        backgroundColor: "#b91c1c",
                         color: "white",
                         fontSize: "0.75rem",
                         fontWeight: "bold",
@@ -418,7 +418,7 @@ export default function DashboardPage() {
                     }}
                   >
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      5D MA <InfoTooltip content={TOOLTIP_COPY.DASHBOARD_MA} />:
+                      5D MA <InfoTooltip content={TOOLTIP_COPY.DASHBOARD_MA} id="tooltip-dashboard-ma" />:
                     </span>
                     <span>${stock.ma_5_day.toFixed(2)}</span>
                   </div>

@@ -460,61 +460,37 @@ input {
 }
 
 .form-layout {
-
   display: grid;
-
   grid-template-columns: 1.15fr 0.85fr;
-
   gap: 18px;
-
 }
 
 .settings-form {
-
   display: grid;
-
   gap: 14px;
-
   margin-top: 18px;
-
 }
 
 .settings-form label {
-
   display: grid;
-
   gap: 8px;
-
   font-weight: 600;
-
 }
 
 .settings-form input,
-
 .settings-form select {
-
   width: 100%;
-
   border: 1px solid rgba(148, 163, 184, 0.24);
-
   border-radius: 12px;
-
   background: rgba(15, 23, 42, 0.92);
-
   color: white;
-
   padding: 12px 14px;
-
 }
 
 @media (max-width: 900px) {
-
   .form-layout {
-
     grid-template-columns: 1fr;
-
   }
-
 }
 
 /* ─── UC-13: Sort control ───────────────────────────────────────────────── */
@@ -600,3 +576,42 @@ input {
 
 .hype-bar-container { width: 100%; max-width: 200px; height: 8px; background: #0f172a; border-radius: 4px; border: 1px solid #334155; overflow: hidden; margin: 0 auto; }
 .hype-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; }
+
+/* ─── Enhanced divergence warning tooltip for high contrast (UC-09) ────── */
+#tooltip-divergence,
+#tooltip-divergence-detail {
+  background-color: #b91c1c !important;
+  border-color: #7f1d1d !important;
+  color: #ffffff !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 13px !important;
+}
+
+#tooltip-divergence:hover,
+#tooltip-divergence:focus,
+#tooltip-divergence-detail:hover,
+#tooltip-divergence-detail:focus {
+  background-color: #dc2626 !important;
+  border-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+/* ─── Tour info tooltip sizing (UC-14) ────────────────────────────────── */
+#tour-info-tooltip-demo {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 12px !important;
+}
+
+/* ─── Dashboard MA tooltip styling ────────────────────────────────────── */
+#tooltip-dashboard-ma {
+  color: #ffffff !important;
+  border-color: #94a3b8 !important;
+}
+
+#tooltip-dashboard-ma:hover,
+#tooltip-dashboard-ma:focus {
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+}
