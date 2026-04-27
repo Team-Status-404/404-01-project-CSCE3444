@@ -6,6 +6,17 @@
   font-weight: 400;
 }
 
+/* Forces numbers to align perfectly in grids and lists */
+.stat-card strong,
+.stock-card strong,
+.price-block strong,
+.positive-text,
+.negative-text,
+h3 {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em; /* Slight tightening for a sleeker look */
+}
+
 * {
   box-sizing: border-box;
 }
@@ -14,14 +25,30 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.2), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.14), transparent 30%),
+    radial-gradient(
+      circle at top right,
+      rgba(37, 99, 235, 0.2),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(14, 165, 233, 0.14),
+      transparent 30%
+    ),
     #07162f;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+/* small design for text*/
+.gradient-text {
+  background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
 }
 
 button,
@@ -125,7 +152,9 @@ input {
   justify-content: center;
   border-radius: 12px;
   padding: 12px 18px;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .primary-button {
@@ -155,6 +184,14 @@ input {
   border-radius: 18px;
   padding: 20px;
   box-shadow: 0 10px 32px rgba(2, 6, 23, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; /* Add transition */
+}
+
+a .card:hover, 
+.stock-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56, 189, 248, 0.4); /* Light blue border glow */
+  box-shadow: 0 12px 40px rgba(14, 165, 233, 0.15), 0 0 15px rgba(56, 189, 248, 0.1); 
 }
 
 .stats-grid,
@@ -243,7 +280,11 @@ input {
   margin: 22px 0 14px;
   padding: 24px 18px;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(14, 165, 233, 0.05));
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.16),
+    rgba(14, 165, 233, 0.05)
+  );
 }
 
 .chart-line {
@@ -346,7 +387,7 @@ input {
 
 .auth-divider::before,
 .auth-divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: rgba(148, 163, 184, 0.2);
@@ -451,39 +492,31 @@ input {
 }
 
 .form-layout {
-
   display: grid;
 
   grid-template-columns: 1.15fr 0.85fr;
 
   gap: 18px;
-
 }
 
 .settings-form {
-
   display: grid;
 
   gap: 14px;
 
   margin-top: 18px;
-
 }
 
 .settings-form label {
-
   display: grid;
 
   gap: 8px;
 
   font-weight: 600;
-
 }
 
 .settings-form input,
-
 .settings-form select {
-
   width: 100%;
 
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -495,16 +528,30 @@ input {
   color: white;
 
   padding: 12px 14px;
-
 }
 
 @media (max-width: 900px) {
-
   .form-layout {
-
     grid-template-columns: 1fr;
-
   }
-
 }
- 
+
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
