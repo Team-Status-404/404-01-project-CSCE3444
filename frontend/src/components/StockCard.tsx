@@ -85,7 +85,7 @@ export default function StockCard({ stock }: StockCardProps) {
   };
 
   return (
-    <article className="card stock-card">
+    <article className="card stock-card" style={{ transition: 'all 0.3s ease-in-out' }}>
       <div className="stock-card-header">
         <div>
           <h3>{stock.symbol}</h3>
