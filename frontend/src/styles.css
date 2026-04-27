@@ -86,6 +86,161 @@ button, input, select {
 .stats-grid,
 .watchlist-grid,
 .summary-grid,
+.detail-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.watchlist-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-grid {
+  grid-template-columns: 1.8fr 1fr;
+  margin-bottom: 22px;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stat-card strong,
+.stock-card strong,
+.price-block strong {
+  display: block;
+  font-size: 1.45rem;
+  margin: 8px 0 4px;
+}
+
+.stock-card-header,
+.stock-card-body,
+.hero-header,
+.stats-row,
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stock-card-body,
+.hero-header {
+  align-items: flex-end;
+}
+
+.section-block {
+  margin-top: 26px;
+}
+
+.section-heading {
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.positive,
+.positive-text {
+  color: #4ade80;
+}
+
+.positive {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.negative,
+.negative-text {
+  color: #f87171;
+}
+
+.negative {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.neutral,
+.neutral-text {
+  color: #facc15;
+}
+
+.neutral {
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.chart-placeholder {
+  margin: 22px 0 14px;
+  padding: 24px 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(14, 165, 233, 0.05));
+}
+
+.chart-line {
+  height: 8px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #38bdf8);
+}
+
+.chart-line.short {
+  width: 60%;
+}
+
+.chart-line.medium {
+  width: 78%;
+}
+
+.stats-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.stats-row {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-panel {
+  width: min(100%, 980px);
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 22px;
+  padding: 28px;
+  border-radius: 24px;
+  background: rgba(10, 18, 34, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.3);
+}
+
+.login-copy {
+  padding: 14px;
+}
+
+.eyebrow {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
+  font-size: 0.82rem;
+  margin-bottom: 14px;
+}
+
+.login-form {
 .detail-grid,
 .login-panel,
 .form-layout {
@@ -295,6 +450,58 @@ a .card:hover, .stock-card:hover {
   border-radius: 10px;
 }
 
+/* ─── UC-13: Sort control ───────────────────────────────────────────────── */
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.sort-select {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-select:hover,
+.sort-select:focus {
+  border-color: rgba(37, 99, 235, 0.6);
+  outline: none;
+}
+
+/* ─── Tippy.js dark theme for StockIQ (UC-14) ──────────────────────────── */
+.tippy-box[data-theme~='stockiq'] {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.tippy-box[data-theme~='stockiq'] .tippy-content {
+  padding: 8px 12px;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='top'] > .tippy-arrow::before {
+  border-top-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='bottom'] > .tippy-arrow::before {
+  border-bottom-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='left'] > .tippy-arrow::before {
+  border-left-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='right'] > .tippy-arrow::before {
+  border-right-color: #1e293b;
+}
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }

@@ -10,7 +10,10 @@ export default function Sidebar() {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Markets', path: '/markets' },
     ...(isAuthenticated
-      ? [{ label: 'Profile', path: '/profile' }]
+      ? [
+          { label: 'Watchlist', path: '/watchlist' },
+          { label: 'Profile', path: '/profile' },
+        ]
       : [{ label: 'Login', path: '/login' }]),
   ];
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
@@ -26,6 +26,7 @@ interface StockMetric {
 
 interface ComparisonResult {
   metrics: StockMetric;
+  history: Record<string, string | number>[];
   history: Record<string, unknown>[];
 }
 
@@ -154,6 +155,8 @@ export default function MarketsPage() {
   };
 
   // Transformation Logic for Multi-Line Chart
+  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day, i: number) => {
+    const point: Record<string, string | number> = { date: day.date };
   const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: Record<string, unknown>, i: number) => {
     const point: Record<string, unknown> = { date: day.date };
     comparisonData.forEach(stock => {
