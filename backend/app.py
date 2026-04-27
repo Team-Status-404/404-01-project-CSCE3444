@@ -139,10 +139,6 @@ def get_stock_news(ticker):
     """Returns the latest 5-10 news articles for a given ticker."""
     try:
         ticker_upper = ticker.upper()
-        api_key = os.getenv("NEWSDATA_API_KEY")
-        
-        if not api_key:
-            return jsonify({"status": "error", "message": "News API key not configured"}), 500
 
         # In-memory cache — avoids duplicate API calls within 5 minutes
         cache_key = f"news_{ticker_upper}"
@@ -151,34 +147,11 @@ def get_stock_news(ticker):
         if cached:
             return jsonify({"status": "success", "ticker": ticker_upper, "articles": cached, "cached": True}), 200
 
-        # Fetch from NewsData API
-        url = f"https://newsdata.io/api/1/latest?apikey={api_key}&q={ticker_upper}&language=en"
-        response = requests.get(url, timeout=5)
+        # Fetch using sentiment_engine which has fallbacks
+        articles = sentiment_engine.get_articles(ticker_upper)
         
-        if response.status_code == 429:
-            return jsonify({"status": "error", "message": "News API rate limit reached. Try again shortly."}), 429
-        
-        if response.status_code != 200:
-            return jsonify({"status": "error", "message": "Failed to fetch news"}), 502
-
-        results = response.json().get('results', [])
-        
-        if not results:
+        if not articles:
             return jsonify({"status": "success", "ticker": ticker_upper, "articles": [], "cached": False}), 200
-
-        # Format articles, take up to 10
-        articles = []
-        for art in results[:10]:
-            articles.append({
-                "article_id": art.get("article_id", ""),
-                "headline": art.get("title", "No title"),
-                "source": art.get("source_id", "Unknown"),
-                "published_at": art.get("pubDate", ""),
-                "url": art.get("link", "#"),
-                "sentiment_score": sentiment_engine._vaderEngine.polarity_scores(
-                    f"{art.get('title', '')} {art.get('description', '')}"
-                )['compound']
-            })
 
         # Save to in-memory cache
         news_cache[cache_key] = articles

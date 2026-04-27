@@ -333,35 +333,74 @@ class SentimentAnalyzer:
         return 0.0, 0
 
     def _get_news_sentiment(self, ticker: str) -> Tuple[float, int]:
-        if not self._newsAPIKey:
-            print("DEBUG: NEWSDATA_API_KEY missing")
-            return 0.0, 0
-        url = f"https://newsdata.io/api/1/latest?apikey={self._newsAPIKey}&q={ticker}&language=en"
+        total_compound = 0.0
+        volume = 0
+        self.articles = []
+
+        if self._newsAPIKey:
+            url = f"https://newsdata.io/api/1/latest?apikey={self._newsAPIKey}&q={ticker}&language=en"
+            try:
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    articles_data = response.json().get('results', [])
+                    if isinstance(articles_data, list) and articles_data:
+                        for art in articles_data:
+                            text = f"{art.get('title', '')} {art.get('description', '')}"
+                            score = self._vaderEngine.polarity_scores(text)['compound']
+                            total_compound += score
+                            self.articles.append(NewsArticle(
+                                article_id=art.get('article_id', 'unknown'),
+                                headline=art.get('title', ''),
+                                publish_date=art.get('pubDate', ''),
+                                source=art.get('source_id', 'NewsData'),
+                                sentiment_score=score,
+                                url=art.get('link', ''),
+                                description=art.get('description', ''),
+                            ))
+                        volume = len(self.articles)
+                        return (total_compound / volume) if volume > 0 else 0.0, volume
+                else:
+                    print(f"DEBUG: NewsData API Error (Status: {response.status_code}): {response.text}")
+            except Exception as e:
+                print(f"DEBUG: NewsData API Exception: {e}")
+
+        # Fallback to yfinance
+        print(f"DEBUG: Falling back to yfinance news for {ticker}")
         try:
-            response = requests.get(url, timeout=5)
-            articles_data = response.json().get('results', [])
-            if not articles_data:
-                return 0.0, 0
-            total_compound = 0
-            volume = len(articles_data)
-            self.articles = []
-            for art in articles_data:
-                text = f"{art.get('title', '')} {art.get('description', '')}"
-                score = self._vaderEngine.polarity_scores(text)['compound']
-                total_compound += score
-                self.articles.append(NewsArticle(
-                    article_id=art.get('article_id', 'unknown'),
-                    headline=art.get('title', ''),
-                    publish_date=art.get('pubDate', ''),
-                    source=art.get('source_id', 'NewsData'),
-                    sentiment_score=score,
-                    url=art.get('link', ''),
-                    description=art.get('description', ''),
-                ))
-            return (total_compound / volume) if volume > 0 else 0.0, volume
+            import yfinance as yf
+            stock = yf.Ticker(ticker)
+            yf_news = stock.news
+            if yf_news:
+                for item in yf_news[:10]:
+                    content = item.get('content', {}) if isinstance(item, dict) and 'content' in item else item
+                    
+                    title = content.get('title', '')
+                    desc = content.get('summary', '') or content.get('description', '')
+                    text = f"{title} {desc}"
+                    score = self._vaderEngine.polarity_scores(text)['compound']
+                    total_compound += score
+                    
+                    provider = content.get('provider', {})
+                    source = provider.get('displayName', 'Yahoo Finance') if isinstance(provider, dict) else 'Yahoo Finance'
+                    
+                    link_info = content.get('clickThroughUrl', {})
+                    url = link_info.get('url', '') if isinstance(link_info, dict) else ''
+                    
+                    self.articles.append(NewsArticle(
+                        article_id=content.get('id', item.get('uuid', 'yf-unknown')),
+                        headline=title,
+                        publish_date=content.get('pubDate', ''),
+                        source=source,
+                        sentiment_score=score,
+                        url=url,
+                        description=desc,
+                    ))
+                volume = len(self.articles)
+                return (total_compound / volume) if volume > 0 else 0.0, volume
         except Exception as e:
-            print(f"DEBUG: NewsData API Error: {e}")
-            return 0.0, 0
+            print(f"DEBUG: yfinance fallback error: {e}")
+
+        return 0.0, 0
 
     def calculateHypeScore(self, ticker: str) -> Dict[str, Any]:
         ticker_upper = ticker.upper()
