@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, Legend, LineChart, Area 
+import {
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend, LineChart, Area
 } from 'recharts';
-
-// Component Imports
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import InfoTooltip from '../components/InfoTooltip';
-import { useAuth } from '../context/AuthContext';
+import TrendingStocks from '../components/TrendingStocks';
 import { TOOLTIP_COPY } from '../constants/tooltipCopy';
+import { useAuth } from '../context/AuthContext';
 
-// --- TYPES & INTERFACES ---
+// UC-08 interface
+interface MarketData {
+  currentPrice: number;
+  chartData: Array<{ day: string; SPY: number; sentiment: number }>;
+}
+
+// UC-17 interfaces
 interface StockMetric {
   symbol: string;
   price: string;
@@ -21,10 +26,10 @@ interface StockMetric {
 
 interface ComparisonResult {
   metrics: StockMetric;
-  history: any[];
+  history: Record<string, unknown>[];
 }
 
-// --- SPRINT 2 MOCK DATA (Retained for UI Consistency) ---
+// Sprint 2 mock data (retained for UI consistency)
 const mockIndexData = [
   { time: '09:30', SP500: 5050, sentiment: 55 },
   { time: '11:00', SP500: 5080, sentiment: 62 },
@@ -42,7 +47,12 @@ const trendingStocks = [
 
 export default function MarketsPage() {
   const { user } = useAuth();
-  
+
+  // UC-08: Live SPY state
+  const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
   // UI States
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [addingTicker, setAddingTicker] = useState<string | null>(null);
@@ -53,10 +63,38 @@ export default function MarketsPage() {
   const [loadingCompare, setLoadingCompare] = useState(false);
   const [errorCompare, setErrorCompare] = useState<string | null>(null);
 
-  // --- HANDLERS ---
+  // UC-08: Fetch real SPY data on mount to serve as our S&P 500 proxy
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/stock/SPY`);
+        const json = await res.json();
+
+        if (res.ok && json.status === 'success') {
+          const { currentPrice, graph_data } = json.data;
+
+          const formattedData = graph_data.historical_prices.map((price: number, idx: number) => ({
+            day: `Day ${idx + 1}`,
+            SPY: price,
+            sentiment: graph_data.historical_sentiment[idx] || 50
+          }));
+
+          setMarketData({ currentPrice, chartData: formattedData });
+        } else {
+          setError(json.message || "Failed to load market data.");
+        }
+      } catch {
+        setError("Network error while fetching market data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMarketData();
+  }, []);
 
   const handleAddStock = async (e: React.MouseEvent, ticker: string) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.stopPropagation();
     if (!user) return;
 
@@ -77,7 +115,7 @@ export default function MarketsPage() {
       } else {
         setFeedback({ message: data.message || 'Failed to add stock.', type: 'error' });
       }
-    } catch (err) {
+    } catch {
       setFeedback({ message: 'Network error. Please check your connection.', type: 'error' });
     } finally {
       setAddingTicker(null);
@@ -101,14 +139,14 @@ export default function MarketsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickers })
       });
-      
+
       const result = await response.json();
       if (result.status === 'success') {
         setComparisonData(result.data);
       } else {
         setErrorCompare(result.message || "Could not fetch comparison data.");
       }
-    } catch (error) {
+    } catch {
       setErrorCompare("Server error. Ensure the Python backend is running.");
     } finally {
       setLoadingCompare(false);
@@ -116,8 +154,8 @@ export default function MarketsPage() {
   };
 
   // Transformation Logic for Multi-Line Chart
-  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: any, i: number) => {
-    let point: any = { date: day.date };
+  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: Record<string, unknown>, i: number) => {
+    const point: Record<string, unknown> = { date: day.date };
     comparisonData.forEach(stock => {
       if (stock.history[i]) {
         point[stock.metrics.symbol] = stock.history[i][stock.metrics.symbol];
@@ -128,16 +166,105 @@ export default function MarketsPage() {
 
   return (
     <Layout>
-      <TopBar 
-        title="Markets Overview" 
-        subtitle="Real-time performance tracking and comparative market intelligence." 
+      <TopBar
+        title="Markets Overview"
+        subtitle="Live tracking of major indices and trending social sentiment."
       />
 
+      {/* UC-08: Live Market Pulse Section */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '32px', padding: '0 24px', maxWidth: '1200px', margin: '0 auto' }}>
+
+        <article className="card hero-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '2rem' }}>S&P 500 (SPY)</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <p className="muted-label" style={{ margin: 0 }}>Market Pulse: 5-Day Price vs. Sentiment</p>
+                <InfoTooltip content={TOOLTIP_COPY.MARKET_SENTIMENT || "Comparing market price against social hype."} />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              {isLoading ? (
+                <span style={{ color: '#94a3b8' }}>Loading live data...</span>
+              ) : marketData ? (
+                <strong style={{ fontSize: '2rem', display: 'block' }}>
+                  ${marketData.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </strong>
+              ) : (
+                <span style={{ color: '#ef4444' }}>Data unavailable</span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: '350px', width: '100%' }}>
+            {isLoading ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                <div className="animate-pulse">Fetching market pulse...</div>
+              </div>
+            ) : error ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                {error}
+              </div>
+            ) : marketData && (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={marketData.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="day" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#38bdf8"
+                    domain={['auto', 'auto']}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#4ade80"
+                    domain={[0, 100]}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                    labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="sentiment"
+                    fill="#4ade80"
+                    opacity={0.3}
+                    radius={[4, 4, 0, 0]}
+                    name="Market Sentiment"
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="SPY"
+                    stroke="#38bdf8"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#38bdf8', strokeWidth: 0 }}
+                    activeDot={{ r: 6 }}
+                    name="SPY Price"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </article>
+
+        {/* UC-08: Trending Stocks Component */}
+        <TrendingStocks />
+
+      </section>
+
+      {/* Sprint 2 Market Summary + UC-17 Comparison Tool */}
       <div style={{ padding: '0 24px', maxWidth: '1600px', margin: '0 auto' }}>
-        
+
         {/* UPPER SECTION: Sprint 2 Market Summary */}
         <section style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '24px', marginBottom: '32px' }}>
-          
+
           {/* Main Index Card */}
           <article className="card" style={{ padding: '28px', minHeight: '480px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
@@ -169,7 +296,7 @@ export default function MarketsPage() {
                   <XAxis dataKey="time" stroke="#64748b" tick={{ fontSize: 12 }} dy={10} />
                   <YAxis yAxisId="left" stroke="#38bdf8" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
                   <YAxis yAxisId="right" orientation="right" stroke="#4ade80" domain={[0, 100]} hide />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
                     itemStyle={{ fontSize: '14px' }}
                   />
@@ -208,7 +335,7 @@ export default function MarketsPage() {
                         <div style={{ fontWeight: 600, color: '#f8fafc' }}>{stock.price}</div>
                         <div className="positive-text" style={{ fontSize: '0.85rem' }}>{stock.change}</div>
                       </div>
-                      <button 
+                      <button
                         onClick={(e) => handleAddStock(e, stock.ticker)}
                         className="icon-add-btn"
                         disabled={addingTicker === stock.ticker}
@@ -235,19 +362,19 @@ export default function MarketsPage() {
 
             <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
               <div style={{ flex: 1, position: 'relative' }}>
-                <input 
+                <input
                   value={compareInput}
                   onChange={(e) => setCompareInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompare()}
-                  placeholder="Enter tickers to compare (e.g. AAPL, TSLA, MSFT)" 
+                  placeholder="Enter tickers to compare (e.g. AAPL, TSLA, MSFT)"
                   style={{ width: '100%', padding: '16px 20px', borderRadius: '14px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '1rem' }}
                 />
                 {errorCompare && <p style={{ color: '#ef4444', fontSize: '0.85rem', position: 'absolute', bottom: '-22px', left: '4px' }}>{errorCompare}</p>}
               </div>
-              <button 
-                onClick={handleCompare} 
+              <button
+                onClick={handleCompare}
                 disabled={loadingCompare}
-                className="primary-btn" 
+                className="primary-btn"
                 style={{ padding: '0 40px', borderRadius: '14px', fontWeight: 600 }}
               >
                 {loadingCompare ? 'Analyzing...' : 'Compare Assets'}
@@ -256,7 +383,7 @@ export default function MarketsPage() {
 
             {comparisonData.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '40px', marginTop: '20px', animation: 'fadeIn 0.5s ease-in' }}>
-                
+
                 {/* Comparison Stats Sidebar */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {comparisonData.map((s, idx) => (
@@ -279,17 +406,17 @@ export default function MarketsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                       <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 11 }} />
                       <YAxis stroke="#64748b" tick={{ fontSize: 11 }} label={{ value: 'Relative Growth (%)', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: '12px' } }} />
-                      <Tooltip 
-                        contentStyle={{ background: '#0b1221', border: '1px solid #1e293b', borderRadius: '10px' }} 
+                      <Tooltip
+                        contentStyle={{ background: '#0b1221', border: '1px solid #1e293b', borderRadius: '10px' }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                       {comparisonData.map((s, i) => (
-                        <Line 
-                          key={s.metrics.symbol} 
-                          type="monotone" 
-                          dataKey={s.metrics.symbol} 
-                          stroke={['#38bdf8', '#4ade80', '#fbbf24', '#a855f7'][i % 4]} 
-                          strokeWidth={2.5} 
+                        <Line
+                          key={s.metrics.symbol}
+                          type="monotone"
+                          dataKey={s.metrics.symbol}
+                          stroke={['#38bdf8', '#4ade80', '#fbbf24', '#a855f7'][i % 4]}
+                          strokeWidth={2.5}
                           dot={false}
                           activeDot={{ r: 6 }}
                         />

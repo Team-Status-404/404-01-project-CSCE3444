@@ -10,10 +10,11 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, compare_stocks
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_full_discovery_data, compare_stocks
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
+from models.market_scanner import start_market_scanner # imported new auto scanner for the treding tickers
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
@@ -38,9 +39,14 @@ CORS(app, origins=[
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
+
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # Start the alert checker
     start_scheduler(sentiment_engine)
+    
+    # Start the market checker
+    start_market_scanner(sentiment_engine)
 
 # Configure Gemini AI for the article summarizer
 gemini_api_key = os.getenv("GEMINI_API_KEY")
@@ -71,6 +77,37 @@ def search_stocks():
     status_code = 200 if result["status"] == "success" else 500
     return jsonify(result), status_code
 
+@app.route('/api/stocks/trending', methods=['GET'])
+def trending_stocks():
+    """
+    UC-08 | FR-08: Route for the frontend Discovery view and Markets widget.
+    Returns an array of the current top trending stocks based on Hype Score.
+    """
+    try:
+        limit_param = request.args.get('limit', default=5, type=int)
+        sort_param = request.args.get('sort', default='hype_desc', type=str) # Grabs the sort method
+        
+        # Pass both parameters to the new backend function
+        trending_list = get_full_discovery_data(sort_by=sort_param, limit=limit_param)
+        
+        if not trending_list:
+            return jsonify({
+                "status": "success",
+                "message": "No trending data available in the last 24 hours.",
+                "data": []
+            }), 200
+            
+        return jsonify({
+            "status": "success",
+            "data": trending_list
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"An internal server error occurred: {str(e)}"
+        }), 500
+        
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker): 
     """Fetch stock price, name, and moving averages using the Stock object."""
