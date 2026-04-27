@@ -3,8 +3,16 @@ import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import { useNavigate } from 'react-router-dom';
 
+interface DiscoveryStock {
+  ticker: string;
+  hype_score: number;
+  company_name: string;
+  tag: string;
+  price: number;
+}
+
 export default function TrendingPage() {
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [stocks, setStocks] = useState<DiscoveryStock[]>([]);
   const [sortBy, setSortBy] = useState('hype_desc');
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();

@@ -319,11 +319,11 @@ class User:
                 # 4. Send reset email to user
                 _send_reset_email(email, reset_token)
 
-                # Always return a generic success message to prevent email enumeration
-                return {
-                    "status": "success", 
-                    "message": "If that email is in our system, a reset link has been sent."
-                }
+            # Always return a generic success message to prevent email enumeration
+            return {
+                "status": "success",
+                "message": "If that email is in our system, a reset link has been sent."
+            }
 
         except Exception as e:
             if conn:

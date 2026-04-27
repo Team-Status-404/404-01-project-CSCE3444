@@ -10,8 +10,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-# Change this import line in app.py to include get_trending_stocks_data
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_full_discovery_data
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_full_discovery_data, compare_stocks
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
@@ -20,10 +19,16 @@ from models.market_scanner import start_market_scanner # imported new auto scann
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
 
+news_cache = {} # add this to pass linting CI
+
 app = Flask(__name__)
 # Simple in-memory cache for news articles (avoids redundant API calls)
 news_cache = {}
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
+CORS(app, origins=[
+    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
+    "http://localhost:5173",
+    "http://localhost:5174",
+])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -307,6 +312,29 @@ def stream_live_price(ticker):
     )
 
 # ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+# ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/compare', methods=['POST'])
+def compare_stocks_route():
+    """
+    Jeel Patel - Sprint 3 | UC-17
+    Bridge for the Comparison View.
+    """
+    data = request.json or {}
+    tickers = data.get('tickers', [])
+    
+    if not tickers or len(tickers) < 1:
+        return jsonify({"status": "error", "message": "No tickers provided"}), 400
+        
+    result = compare_stocks(tickers)
+    return jsonify(result), 200
+
+
 # 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 

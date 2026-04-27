@@ -35,10 +35,11 @@ jobs:
       # Step 2: Set up the Python environment
       # Python 3.13
       - name: Set up Python 3.13
+
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
-          cache: 'pip'
+          cache: 'pip' # Speeds up workflow by caching downloaded pip packages
 
       # Step 3: Upgrade pip and install the project's exact requirements
       # pytest, pytest-cov, and flake8 are already included in requirements.txt

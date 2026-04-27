@@ -27,7 +27,7 @@ export default function TrendingStocks() {
         } else {
           setError(json.message || 'Failed to fetch trending stocks.');
         }
-      } catch (err) {
+      } catch {
         setError('Network error while fetching trending stocks.');
       } finally {
         setIsLoading(false);
