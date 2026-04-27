@@ -10,11 +10,11 @@ import AlertsPage from './pages/AlertsPage';
 import WatchlistPage from './pages/WatchlistPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import TrendingPage from './pages/TrendingPage'; // new trending page
 import OnboardingTour from './components/OnboardingTour';
 import { useTour } from './context/TourContext';
 
 // wrapper forces StockDetailPage to fully remount
-// every time the ticker in the URL changes (e.g. from the SearchBar)
 function StockDetailWrapper() {
   const location = useLocation();
   return <StockDetailPage key={location.pathname} />;
@@ -40,6 +40,7 @@ export default function App() {
         <Route path="/stock/:ticker" element={<ProtectedRoute><StockDetailWrapper /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/watchlist" element={<ProtectedRoute><WatchlistPage /></ProtectedRoute>} />
+        <Route path="/trending" element={<ProtectedRoute><TrendingPage /></ProtectedRoute>} />
       </Routes>
       {showTour && <OnboardingTour onComplete={endTour} isRevisit={isRevisit} />}
     </>

@@ -559,6 +559,61 @@ def get_5_day_sentiment(ticker_symbol: str) -> dict:
             conn.close()
 
 
+def get_full_discovery_data(sort_by: str = "hype_desc", limit: int = 50) -> list:
+    """
+    UC-08 | FR-08: Enhanced discovery logic for the full-page view.
+    Supports dynamic sorting to help users find specific types of opportunities.
+    """
+    sort_map = {
+        "hype_desc": "final_hype_score DESC",
+        "hype_asc": "final_hype_score ASC",
+        "volume_desc": "social_volume DESC",
+        "ticker_asc": "ticker ASC"
+    }
+    order_clause = sort_map.get(sort_by, "final_hype_score DESC")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(f"""
+            WITH LatestMetrics AS (
+                SELECT DISTINCT ON (m.ticker)
+                    m.ticker,
+                    m.final_hype_score,
+                    m.tag,
+                    m.social_volume,
+                    s.company_name,
+                    s.current_price,
+                    s.sector
+                FROM hype_metrics m
+                JOIN stocks s ON m.ticker = s.ticker
+                WHERE m.created_at >= NOW() - INTERVAL '24 hours'
+                ORDER BY m.ticker, m.created_at DESC
+            )
+            SELECT * FROM LatestMetrics
+            ORDER BY {order_clause} NULLS LAST
+            LIMIT %s;
+        """, (limit,))
+        rows = cur.fetchall()
+        cur.close()
+        return [
+            {
+                "ticker": r[0],
+                "hype_score": float(r[1]) if r[1] is not None else 0.0,
+                "tag": r[2],
+                "social_volume": r[3],
+                "company_name": r[4],
+                "price": float(r[5]) if r[5] else 0.0,
+                "sector": r[6]
+            } for r in rows
+        ]
+    except Exception as e:
+        print(f"DEBUG: Discovery DB Error: {e}")
+        return []
+    finally:
+        if conn: conn.close()
+
+
 # ==========================================
 # USER DROP-DOWN HELPER FUNCTIONS
 # ==========================================

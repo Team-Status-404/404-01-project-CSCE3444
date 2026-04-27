@@ -1,7 +1,7 @@
 # 404-01-project-CSCE3444 (StockIQ)
 
-![Frontend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg?branch=dev)
-![Backend CI](https://github.com/oladipupo-david-gideon/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg?branch=dev)
+![Frontend CI](https://github.com/Team-Status-404/404-01-project-CSCE3444/actions/workflows/frontend.yaml/badge.svg?branch=dev)
+![Backend CI](https://github.com/Team-Status-404/404-01-project-CSCE3444/actions/workflows/backend.yaml/badge.svg?branch=dev)
 
 **Team Name:** Group 404
 
