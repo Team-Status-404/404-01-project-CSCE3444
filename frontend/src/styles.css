@@ -508,6 +508,33 @@ input {
 
 }
 
+/* ─── UC-13: Sort control ───────────────────────────────────────────────── */
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.sort-select {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-select:hover,
+.sort-select:focus {
+  border-color: rgba(37, 99, 235, 0.6);
+  outline: none;
+}
+
 /* ─── Tippy.js dark theme for StockIQ (UC-14) ──────────────────────────── */
 .tippy-box[data-theme~='stockiq'] {
   background-color: #1e293b;
