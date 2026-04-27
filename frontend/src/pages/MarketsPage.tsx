@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, 
@@ -21,7 +21,7 @@ interface StockMetric {
 
 interface ComparisonResult {
   metrics: StockMetric;
-  history: any[];
+  history: Record<string, string | number>[];
 }
 
 // --- SPRINT 2 MOCK DATA (Retained for UI Consistency) ---
@@ -77,7 +77,7 @@ export default function MarketsPage() {
       } else {
         setFeedback({ message: data.message || 'Failed to add stock.', type: 'error' });
       }
-    } catch (err) {
+    } catch {
       setFeedback({ message: 'Network error. Please check your connection.', type: 'error' });
     } finally {
       setAddingTicker(null);
@@ -108,7 +108,7 @@ export default function MarketsPage() {
       } else {
         setErrorCompare(result.message || "Could not fetch comparison data.");
       }
-    } catch (error) {
+    } catch {
       setErrorCompare("Server error. Ensure the Python backend is running.");
     } finally {
       setLoadingCompare(false);
@@ -116,8 +116,8 @@ export default function MarketsPage() {
   };
 
   // Transformation Logic for Multi-Line Chart
-  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: any, i: number) => {
-    let point: any = { date: day.date };
+  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day, i: number) => {
+    const point: Record<string, string | number> = { date: day.date };
     comparisonData.forEach(stock => {
       if (stock.history[i]) {
         point[stock.metrics.symbol] = stock.history[i][stock.metrics.symbol];

@@ -34,8 +34,6 @@ export default function WatchlistPage() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    setError(null);
     fetch(`${API_BASE}/api/user/watchlist?user_id=${user.user_id}`, {
       headers: { Authorization: `Bearer ${user.token}` },
     })
