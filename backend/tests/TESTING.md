@@ -20,6 +20,7 @@ backend/
 └── tests/
     ├── TESTING.md
     ├── conftest.py
+    ├── test_app.py
     ├── __init__.py
     └── models/
         ├── __init__.py

@@ -560,7 +560,7 @@ export default function StockDetailPage() {
           <article className="card hype-meter-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
             <h3 style={{ width: '100%', marginBottom: '10px', margin: 0 }}>AI Hype Meter</h3>
             <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center', width: '100%', display: 'flex', justifyContent: 'center' }}>
-              <HypeMeter />
+              <HypeMeter initialTicker={displayTicker}/>
             </div>
           </article>
 
