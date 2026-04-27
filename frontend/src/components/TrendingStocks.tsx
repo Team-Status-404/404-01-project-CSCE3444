@@ -8,6 +8,7 @@ interface TrendingStock {
   hype_score: number;
   tag: string;
   company_name: string;
+  price: number;
 }
 
 export default function TrendingStocks() {
@@ -38,9 +39,9 @@ export default function TrendingStocks() {
   }, []);
 
   const getHypeColor = (score: number) => {
-    if (score >= 65) return '#4ade80'; // positive green
-    if (score <= 35) return '#ef4444'; // negative red
-    return '#fbbf24'; // neutral yellow
+    if (score >= 65) return '#4ade80';
+    if (score <= 35) return '#ef4444';
+    return '#fbbf24';
   };
 
   return (
@@ -49,7 +50,7 @@ export default function TrendingStocks() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <h3 style={{ margin: 0 }}>Trending Stocks</h3>
-            <InfoTooltip content={TOOLTIP_COPY.TRENDING_STOCKS || "Stocks with the highest social volume."} />
+            <InfoTooltip content={TOOLTIP_COPY.TRENDING_STOCKS || "Stocks with the highest social hype score."} />
           </div>
         </div>
 
@@ -66,17 +67,17 @@ export default function TrendingStocks() {
             No trending data available in the last 24 hours.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {trending.map((stock) => (
-              <Link 
-                key={stock.ticker} 
-                to={`/stock/${stock.ticker.toLowerCase()}`} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  padding: '16px', 
-                  background: 'rgba(148, 163, 184, 0.05)', 
+              <Link
+                key={stock.ticker}
+                to={`/stock/${stock.ticker.toLowerCase()}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 16px',
+                  background: 'rgba(148, 163, 184, 0.05)',
                   borderRadius: '12px',
                   textDecoration: 'none',
                   color: 'inherit',
@@ -85,23 +86,40 @@ export default function TrendingStocks() {
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.border = '1px solid #38bdf8';
-                  e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
+                  e.currentTarget.style.background = 'rgba(56, 189, 248, 0.08)';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.border = '1px solid #1e293b';
                   e.currentTarget.style.background = 'rgba(148, 163, 184, 0.05)';
                 }}
               >
-                <div>
-                  <strong style={{ display: 'block', fontSize: '1.2rem' }}>{stock.ticker}</strong>
-                  <span style={{ fontSize: '0.9rem', color: '#94a3b8' }} title={stock.company_name}>
-                    {stock.company_name.length > 15 ? stock.company_name.substring(0, 15) + '...' : stock.company_name}
+                {/* Ticker & Company */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ display: 'block', fontSize: '1.1rem' }}>{stock.ticker}</strong>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    color: '#94a3b8',
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {stock.company_name}
                   </span>
                 </div>
-                
+
+                {/* Price */}
+                <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Price</span>
+                  <strong style={{ display: 'block', fontSize: '1rem', color: '#f8fafc' }}>
+                    ${stock.price ? stock.price.toFixed(2) : '---'}
+                  </strong>
+                </div>
+
+                {/* Hype Score */}
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Hype Score</span>
-                  <strong style={{ display: 'block', fontSize: '1.4rem', color: getHypeColor(stock.hype_score) }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Hype</span>
+                  <strong style={{ display: 'block', fontSize: '1.3rem', color: getHypeColor(stock.hype_score) }}>
                     {stock.hype_score}
                   </strong>
                 </div>
@@ -110,9 +128,8 @@ export default function TrendingStocks() {
           </div>
         )}
 
-        {/* View All Button Navigating to the Full Discovery Page */}
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button 
+          <button
             onClick={() => navigate('/trending')}
             style={{
               background: 'transparent',
@@ -137,7 +154,6 @@ export default function TrendingStocks() {
             View Full Discovery Engine &rarr;
           </button>
         </div>
-
       </article>
     </div>
   );

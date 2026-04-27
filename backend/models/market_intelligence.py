@@ -73,7 +73,7 @@ class Stock:
         try:
             profile_url = f"https://financialmodelingprep.com/stable/profile?symbol={self._tickerSymbol}&apikey={api_key}"
             profile_resp = requests.get(profile_url)
-            if profile_resp.status_code == 402:
+            if profile_resp.status_code != 200:
                 fresh_data = self._fallback_yfinance()
             elif profile_resp.status_code == 200:
                 profile_data = profile_resp.json()
@@ -110,7 +110,7 @@ class Stock:
             fresh_data["cached"] = False
             return self._append_graph_data(fresh_data)
 
-        return fresh_data
+        return fresh_data or {"status": "error", "message": f"Could not retrieve data for {self._tickerSymbol}."}
 
     def _get_data_dict(self) -> Dict[str, Any]:
         return {

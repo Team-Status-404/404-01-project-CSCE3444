@@ -9,6 +9,7 @@ export default function Sidebar() {
   const links = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Markets', path: '/markets' },
+    { label: 'Trending', path: '/trending' },
     ...(isAuthenticated
       ? [
           { label: 'Watchlist', path: '/watchlist' },
