@@ -239,6 +239,15 @@ input {
   background: rgba(248, 113, 113, 0.12);
 }
 
+.neutral,
+.neutral-text {
+  color: #facc15;
+}
+
+.neutral {
+  background: rgba(250, 204, 21, 0.12);
+}
+
 .chart-placeholder {
   margin: 22px 0 14px;
   padding: 24px 18px;

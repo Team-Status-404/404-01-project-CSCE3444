@@ -71,7 +71,7 @@ export default function WatchlistPage() {
         title="My Watchlist"
         subtitle="Manage and track your custom stock portfolio."
         actionLabel="Add Stock"
-        actionTo="/search"
+        actionTo="/markets"
       />
 
       <section className="section-block">

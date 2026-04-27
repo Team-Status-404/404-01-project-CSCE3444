@@ -77,6 +77,13 @@ export default function StockCard({ stock }: StockCardProps) {
 
   const isUp = stock.trend === 'up';
 
+  const getSentimentClass = (): string => {
+    const s = stock.sentiment.toLowerCase();
+    if (s.includes('positive') || s.includes('bullish')) return 'pill positive';
+    if (s.includes('negative') || s.includes('bearish')) return 'pill negative';
+    return 'pill neutral';
+  };
+
   // UC-09: Flash color style for the price
   const getPriceColor = (): string => {
     if (priceFlash === 'up') return '#4ade80';
@@ -91,7 +98,7 @@ export default function StockCard({ stock }: StockCardProps) {
           <h3>{stock.symbol}</h3>
           <p>{stock.company}</p>
         </div>
-        <span className={isUp ? 'pill positive' : 'pill negative'}>{stock.sentiment}</span>
+        <span className={getSentimentClass()}>{stock.sentiment}</span>
       </div>
 
       <div className="stock-card-body">
