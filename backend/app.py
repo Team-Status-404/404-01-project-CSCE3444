@@ -115,10 +115,10 @@ def get_stock_data(ticker):
         # Create a temporary Stock object to fetch the data
         target_stock = Stock(ticker_symbol=ticker)
         result = target_stock.fetch_stock_data()
-        
+
         # If the fetch failed (e.g, invalid ticker), return a 404
-        if result.get("status") == "error":
-            return jsonify(result), 404
+        if not result or result.get("status") == "error":
+            return jsonify(result or {"status": "error", "message": "Failed to fetch stock data."}), 404
             
         return jsonify(result), 200
     except Exception as e:
