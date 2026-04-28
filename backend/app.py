@@ -1,4 +1,5 @@
 import os
+import requests
 import json
 import time as time_module
 from flask import Flask, jsonify, request, Response
@@ -9,16 +10,25 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from google import genai
 
 # --- NEW OOP DOMAIN MODULES ---
-from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers
+from models.market_intelligence import Stock, SentimentAnalyzer, get_price_data_and_ma, get_5_day_sentiment, calculate_divergence_flag, search_for_tickers, get_full_discovery_data, compare_stocks
 from models.portfolio import WatchList, Alerts
 from models.user_management import User, token_required
 from models.alert_scheduler import start_scheduler
+from models.market_scanner import start_market_scanner # imported new auto scanner for the treding tickers
 
 # Load environment variables (Supabase URL, API Keys, etc.)
 load_dotenv()
 
+news_cache = {} # add this to pass linting CI
+
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
+# Simple in-memory cache for news articles (avoids redundant API calls)
+news_cache = {}
+CORS(app, origins=[
+    os.getenv("FRONTEND_URL", "https://stockiq-nu.vercel.app"),
+    "http://localhost:5173",
+    "http://localhost:5174",
+])
 
 # ==========================================
 # SERVER INITIALIZATION
@@ -29,9 +39,14 @@ CORS(app, origins=["http://localhost:5173", "http://localhost:5174"])
 vader_engine = SentimentIntensityAnalyzer()
 news_api_key = os.getenv("NEWSDATA_API_KEY")
 sentiment_engine = SentimentAnalyzer(vader_engine, news_api_key) # applies to all clients making requests of the server
+
 # Start the background alert checker
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # Start the alert checker
     start_scheduler(sentiment_engine)
+    
+    # Start the market checker
+    start_market_scanner(sentiment_engine)
 
 # Configure Gemini AI for the article summarizer
 gemini_api_key = os.getenv("GEMINI_API_KEY")
@@ -62,6 +77,37 @@ def search_stocks():
     status_code = 200 if result["status"] == "success" else 500
     return jsonify(result), status_code
 
+@app.route('/api/stocks/trending', methods=['GET'])
+def trending_stocks():
+    """
+    UC-08 | FR-08: Route for the frontend Discovery view and Markets widget.
+    Returns an array of the current top trending stocks based on Hype Score.
+    """
+    try:
+        limit_param = request.args.get('limit', default=5, type=int)
+        sort_param = request.args.get('sort', default='hype_desc', type=str) # Grabs the sort method
+        
+        # Pass both parameters to the new backend function
+        trending_list = get_full_discovery_data(sort_by=sort_param, limit=limit_param)
+        
+        if not trending_list:
+            return jsonify({
+                "status": "success",
+                "message": "No trending data available in the last 24 hours.",
+                "data": []
+            }), 200
+            
+        return jsonify({
+            "status": "success",
+            "data": trending_list
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"An internal server error occurred: {str(e)}"
+        }), 500
+        
 @app.route('/api/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker): 
     """Fetch stock price, name, and moving averages using the Stock object."""
@@ -70,9 +116,9 @@ def get_stock_data(ticker):
         target_stock = Stock(ticker_symbol=ticker)
         result = target_stock.fetch_stock_data()
         
-        # If the fetch failed (e.g., invalid ticker), return a 404
-        if result.get("status") == "error":
-            return jsonify(result), 404
+        # If the fetch failed (e.g, invalid ticker), return a 404
+        if not result or result.get("status") == "error":
+            return jsonify(result or {"status": "error", "message": "Failed to fetch stock data."}), 404
             
         return jsonify(result), 200
     except Exception as e:
@@ -85,6 +131,33 @@ def get_stock_sentiment(ticker):
         # Use our globally initialized sentiment engine
         result = sentiment_engine.calculateHypeScore(ticker)
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/api/stocks/<ticker>/news', methods=['GET'])
+def get_stock_news(ticker):
+    """Returns the latest 5-10 news articles for a given ticker."""
+    try:
+        ticker_upper = ticker.upper()
+
+        # In-memory cache — avoids duplicate API calls within 5 minutes
+        cache_key = f"news_{ticker_upper}"
+        cached = news_cache.get(cache_key)
+        
+        if cached:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": cached, "cached": True}), 200
+
+        # Fetch using sentiment_engine which has fallbacks
+        articles = sentiment_engine.get_articles(ticker_upper)
+        
+        if not articles:
+            return jsonify({"status": "success", "ticker": ticker_upper, "articles": [], "cached": False}), 200
+
+        # Save to in-memory cache
+        news_cache[cache_key] = articles
+
+        return jsonify({"status": "success", "ticker": ticker_upper, "articles": articles, "cached": False}), 200
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -279,6 +352,29 @@ def stream_live_price(ticker):
     )
 
 # ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+# ==========================================
+# UC-17: STOCK COMPARISON ROUTE (Jeel Patel - Sprint 3)
+# ==========================================
+
+@app.route('/api/stocks/compare', methods=['POST'])
+def compare_stocks_route():
+    """
+    Jeel Patel - Sprint 3 | UC-17
+    Bridge for the Comparison View.
+    """
+    data = request.json or {}
+    tickers = data.get('tickers', [])
+    
+    if not tickers or len(tickers) < 1:
+        return jsonify({"status": "error", "message": "No tickers provided"}), 400
+        
+    result = compare_stocks(tickers)
+    return jsonify(result), 200
+
+
 # 2. PORTFOLIO ROUTES. (Krish's Route)
 # ==========================================
 
@@ -316,54 +412,95 @@ def remove_from_watchlist():
 @app.route('/api/user/watchlist', methods=['GET'])
 def get_user_watchlist():
     """
-    this function handles the user's dashboard portfolio view based on the items in their watchlist
-    It fetches a user's watchlist, calculates moving averages and sentiment trends, 
-    and checks for divergence warnings
+    UC-13 | Returns enriched watchlist data with hype scores, 24h price change,
+    and 5-day total return. Supports optional ?sort= server-side sorting.
     """
-    # pulls user_id from the request payload from the front end
     user_id = request.args.get('user_id')
-    
-    # validates that it received the user_id and returns an error response if validation failed
+    sort = request.args.get('sort', '')
+
     if not user_id:
         return jsonify({"status": "error", "message": "Missing user_id"}), 400
-    
-    # instantiates a Watchlist class with the user id, and get the current tickers in the user's watchlist
+
     user_watchlist = WatchList(user_id=user_id)
-    tickers = user_watchlist.get_all_tickers() 
-    
-    # if user has an empty watchlist, doesn't move forward to calculate anything
+    tickers = user_watchlist.get_all_tickers()
+
     if not tickers:
         return jsonify({"status": "success", "watchlist": []}), 200
-    
-    # empty list to hold the final payload as a response for the frontend
+
+    # Batch-fetch company names so we avoid N individual queries
+    company_names = {}
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ticker, company_name FROM stocks WHERE ticker = ANY(%s);",
+            (tickers,)
+        )
+        company_names = {row[0]: row[1] for row in cur.fetchall()}
+        cur.close()
+    except Exception as e:
+        print(f"DEBUG: Company name fetch error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
     dashboard_data = []
 
     for ticker in tickers:
         stock_data = get_price_data_and_ma(ticker)
-        
-        # skips stocks that the data is not available due to one reason or another
+
         if "error" in stock_data:
             continue
-            
+
         sentiment_data = get_5_day_sentiment(ticker)
-        
-        # calculates the 20 percent divergence warning
+
         divergence_warning = calculate_divergence_flag(
-            stock_data['price_trend_pct'], 
+            stock_data['price_trend_pct'],
             sentiment_data['trend_pct']
         )
-        
-        # builds the final payload for the frontend to display the sentiment vs price graph and other important variables
+
+        # hype score — calculateHypeScore uses a 5-minute DB cache so repeated calls are fast
+        hype_result = sentiment_engine.calculateHypeScore(ticker)
+        hype_score = hype_result.get('hype_score', 50)
+        hype_tag = hype_result.get('tag', 'Neutral')
+
+        # 24h price change derived from the two most recent closes already in historical_prices
+        hist = stock_data['historical_prices']
+        if len(hist) >= 2 and hist[-2]:
+            price_change_24h = round(hist[-1] - hist[-2], 2)
+            price_change_pct_24h = round((price_change_24h / hist[-2]) * 100, 2)
+        else:
+            price_change_24h = 0.0
+            price_change_pct_24h = 0.0
+
+        # total_return = 5-day price trend expressed as a percentage
+        total_return = round(stock_data['price_trend_pct'] * 100, 2)
+
         dashboard_data.append({
             "ticker": ticker,
+            "company_name": company_names.get(ticker, ticker),
             "current_price": stock_data['current_price'],
             "ma_5_day": stock_data['ma_5_day'],
+            "hype_score": hype_score,
+            "hype_tag": hype_tag,
+            "price_change_24h": price_change_24h,
+            "price_change_pct_24h": price_change_pct_24h,
+            "total_return": total_return,
             "divergence_warning_active": divergence_warning,
             "graph_data": {
                 "historical_prices": stock_data['historical_prices'],
                 "historical_sentiment": sentiment_data['historical_sentiment']
             }
         })
+
+    # Server-side sort when ?sort= is provided
+    if sort == 'hype_desc':
+        dashboard_data.sort(key=lambda x: x['hype_score'], reverse=True)
+    elif sort == 'hype_asc':
+        dashboard_data.sort(key=lambda x: x['hype_score'])
+    elif sort == 'price_mover_desc':
+        dashboard_data.sort(key=lambda x: abs(x['price_change_pct_24h']), reverse=True)
 
     return jsonify({
         "status": "success",
@@ -441,7 +578,7 @@ def get_watchlist():
         if conn:
             conn.close()
 # ==========================================
-# 3. USER & AUTH ROUTES (Lance's Domain)
+# 3. USER & AUTH ROUTES
 # ==========================================
 
 @app.route('/api/user/register', methods=['POST'])
@@ -493,6 +630,35 @@ def delete_account():
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
 
+@app.route('/api/user/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """Returns the authenticated user's profile including onboarding status."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT username, email, has_completed_onboarding FROM users WHERE id = %s",
+            (request.current_user_id,)
+        )
+        row = cur.fetchone()
+        cur.close()
+        if row is None:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        username, email, has_completed_onboarding = row
+        return jsonify({
+            "status": "success",
+            "username": username,
+            "email": email,
+            "has_completed_onboarding": has_completed_onboarding,
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 @app.route('/api/user/profile', methods=['PUT'])
 @token_required
 def update_profile():
@@ -506,6 +672,64 @@ def update_profile():
     )
     status_code = 200 if result["status"] == "success" else 400
     return jsonify(result), status_code
+
+# ==========================================
+# FORGOT PASSWORD & RESET PASSWORD ROUTES
+# ==========================================
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Endpoint to trigger the password reset email flow."""
+    data = request.json
+    # we'll conduct the user reset by email
+    email = data.get('email')
+
+    # if no email in payload, return an error message
+    if not email:
+        return jsonify({"status": "error", "message": "Missing email address"}), 400
+
+    # generate the secret reset token to allow the user to resest their password
+    result = User.generate_reset_token(email)
+    status_code = 200 if result["status"] == "success" else 500
+    return jsonify(result), status_code
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    """Endpoint that receives the token and apply the new password."""
+    data = request.json
+    token = data.get('token')
+    new_password = data.get('new_password')
+
+    # if no email in payload, return an error message
+    if not token or not new_password:
+        return jsonify({"status": "error", "message": "Missing token or new password"}), 400
+
+    # call the reset password function and return the result
+    result = User.reset_password_with_token(token, new_password)
+    status_code = 200 if result["status"] == "success" else 400
+    return jsonify(result), status_code
+
+@app.route('/api/user/onboarding', methods=['PATCH'])
+@token_required
+def complete_onboarding():
+    """Marks the interactive tour as completed for the authenticated user."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET has_completed_onboarding = TRUE WHERE id = %s",
+            (request.current_user_id,)
+        )
+        conn.commit()
+        cur.close()
+        return jsonify({"status": "success", "message": "Onboarding tour marked as completed"}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # starts the flask server in development mode
 if __name__ == '__main__':

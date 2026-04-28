@@ -239,6 +239,15 @@ input {
   background: rgba(248, 113, 113, 0.12);
 }
 
+.neutral,
+.neutral-text {
+  color: #facc15;
+}
+
+.neutral {
+  background: rgba(250, 204, 21, 0.12);
+}
+
 .chart-placeholder {
   margin: 22px 0 14px;
   padding: 24px 18px;
@@ -451,60 +460,158 @@ input {
 }
 
 .form-layout {
-
   display: grid;
-
   grid-template-columns: 1.15fr 0.85fr;
-
   gap: 18px;
-
 }
 
 .settings-form {
-
   display: grid;
-
   gap: 14px;
-
   margin-top: 18px;
-
 }
 
 .settings-form label {
-
   display: grid;
-
   gap: 8px;
-
   font-weight: 600;
-
 }
 
 .settings-form input,
-
 .settings-form select {
-
   width: 100%;
-
   border: 1px solid rgba(148, 163, 184, 0.24);
-
   border-radius: 12px;
-
   background: rgba(15, 23, 42, 0.92);
-
   color: white;
-
   padding: 12px 14px;
-
 }
 
 @media (max-width: 900px) {
-
   .form-layout {
-
     grid-template-columns: 1fr;
-
   }
-
 }
- 
+
+/* ─── UC-13: Sort control ───────────────────────────────────────────────── */
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.sort-select {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-select:hover,
+.sort-select:focus {
+  border-color: rgba(37, 99, 235, 0.6);
+  outline: none;
+}
+
+/* ─── Tippy.js dark theme for StockIQ (UC-14) ──────────────────────────── */
+.tippy-box[data-theme~='stockiq'] {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.tippy-box[data-theme~='stockiq'] .tippy-content {
+  padding: 8px 12px;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='top'] > .tippy-arrow::before {
+  border-top-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='bottom'] > .tippy-arrow::before {
+  border-bottom-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='left'] > .tippy-arrow::before {
+  border-left-color: #1e293b;
+}
+.tippy-box[data-theme~='stockiq'][data-placement^='right'] > .tippy-arrow::before {
+  border-right-color: #1e293b;
+}
+
+/* ─── DISCOVERY ENGINE STYLES (TrendingPage) ──────────────────────────── */
+.discovery-container { max-width: 1200px; margin: 0 auto; }
+.discovery-header-text {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  background: linear-gradient(to right, #38bdf8, #34d399);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.discovery-controls { display: flex; align-items: center; gap: 12px; background: rgba(30, 41, 59, 0.5); padding: 8px; border-radius: 12px; border: 1px solid rgba(51, 65, 85, 0.5); }
+.discovery-table-header { display: none; }
+
+.discovery-card {
+  display: grid; grid-template-columns: 1fr; gap: 12px; align-items: center;
+  background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(51, 65, 85, 0.5);
+  padding: 16px; border-radius: 16px; cursor: pointer; transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+.discovery-card:hover { border: 1px solid rgba(56, 189, 248, 0.5); background: rgba(30, 41, 59, 0.8); transform: translateY(-2px); }
+
+@media (min-width: 768px) {
+  .discovery-table-header { display: grid; grid-template-columns: 3fr 4fr 3fr 2fr; gap: 16px; padding: 0 24px 12px 24px; font-size: 0.8rem; font-weight: bold; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #1e293b; margin-bottom: 16px; }
+  .discovery-card { grid-template-columns: 3fr 4fr 3fr 2fr; padding: 20px 24px; }
+  .mobile-price-label { display: none; }
+}
+
+.hype-bar-container { width: 100%; max-width: 200px; height: 8px; background: #0f172a; border-radius: 4px; border: 1px solid #334155; overflow: hidden; margin: 0 auto; }
+.hype-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; }
+
+/* ─── Enhanced divergence warning tooltip for high contrast (UC-09) ────── */
+#tooltip-divergence,
+#tooltip-divergence-detail {
+  background-color: #b91c1c !important;
+  border-color: #7f1d1d !important;
+  color: #ffffff !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 13px !important;
+}
+
+#tooltip-divergence:hover,
+#tooltip-divergence:focus,
+#tooltip-divergence-detail:hover,
+#tooltip-divergence-detail:focus {
+  background-color: #dc2626 !important;
+  border-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+/* ─── Tour info tooltip sizing (UC-14) ────────────────────────────────── */
+#tour-info-tooltip-demo {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 12px !important;
+}
+
+/* ─── Dashboard MA tooltip styling ────────────────────────────────────── */
+#tooltip-dashboard-ma {
+  color: #ffffff !important;
+  border-color: #94a3b8 !important;
+}
+
+#tooltip-dashboard-ma:hover,
+#tooltip-dashboard-ma:focus {
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+}

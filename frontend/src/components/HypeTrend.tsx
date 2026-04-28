@@ -38,13 +38,19 @@ export default function HypeTrend({ ticker }: HypeTrendProps) {
   const [noData, setNoData] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setNoData(false);
+    let isMounted = true;
 
-    fetch(`${API_URL}/api/stocks/${ticker}/hype-history?period=${period}`)
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setNoData(false);
+
+      try {
+        const res = await fetch(`${API_URL}/api/stocks/${ticker}/hype-history?period=${period}`);
+        const data = await res.json();
+
+        if (!isMounted) return;
+
         if (data.status === 'success') {
           if (data.history.length === 0) {
             setNoData(true);
@@ -55,9 +61,22 @@ export default function HypeTrend({ ticker }: HypeTrendProps) {
         } else {
           setError(data.message || 'Could not load hype history.');
         }
-      })
-      .catch(() => setError('Network error — could not reach the server.'))
-      .finally(() => setLoading(false));
+      } catch {
+        if (isMounted) {
+          setError('Network error — could not reach the server.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [ticker, period]);
 
   const trendColor = trend?.direction === 'up' ? '#4ade80' : trend?.direction === 'down' ? '#f87171' : '#94a3b8';
@@ -150,7 +169,7 @@ export default function HypeTrend({ ticker }: HypeTrendProps) {
               />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#fff' }}
-                formatter={(value: number) => [`${value.toFixed(1)}`, 'Hype Score']}
+                formatter={(value) => [typeof value === 'number' ? `${value.toFixed(1)}` : '—', 'Hype Score']}
               />
               <Line
                 type="monotone"

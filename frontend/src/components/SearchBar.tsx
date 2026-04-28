@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import InfoTooltip from './InfoTooltip';
+import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 
 interface SearchResult {
   ticker: string;
@@ -80,12 +82,14 @@ export default function SearchBar() {
   };
 
   return (
-    <div ref={searchContainerRef} style={{ position: 'relative', width: '900px', maxWidth: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '900px', maxWidth: '100%' }}>
+    <div ref={searchContainerRef} style={{ position: 'relative', flex: 1 }}>
       
       {/* Search Input */}
       <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
-      <input 
-        type="text" 
+      <input
+        type="text"
+        aria-label="Search stocks, news"
         value={query}
         onChange={handleInputChange}
         onFocus={() => { if (query.trim()) setShowDropdown(true); }}
@@ -180,5 +184,7 @@ export default function SearchBar() {
         </div>
       )}
     </div>
+    <InfoTooltip content={TOOLTIP_COPY.SEARCH_BAR} />
+  </div>
   );
 }
