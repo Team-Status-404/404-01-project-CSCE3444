@@ -77,6 +77,13 @@ export default function StockCard({ stock }: StockCardProps) {
 
   const isUp = stock.trend === 'up';
 
+  const getSentimentClass = (): string => {
+    const s = stock.sentiment.toLowerCase();
+    if (s.includes('positive') || s.includes('bullish')) return 'pill positive';
+    if (s.includes('negative') || s.includes('bearish')) return 'pill negative';
+    return 'pill neutral';
+  };
+
   // UC-09: Flash color style for the price
   const getPriceColor = (): string => {
     if (priceFlash === 'up') return '#4ade80';
@@ -85,13 +92,13 @@ export default function StockCard({ stock }: StockCardProps) {
   };
 
   return (
-    <article className="card stock-card">
+    <article className="card stock-card" style={{ transition: 'all 0.3s ease-in-out' }}>
       <div className="stock-card-header">
         <div>
           <h3>{stock.symbol}</h3>
           <p>{stock.company}</p>
         </div>
-        <span className={isUp ? 'pill positive' : 'pill negative'}>{stock.sentiment}</span>
+        <span className={getSentimentClass()}>{stock.sentiment}</span>
       </div>
 
       <div className="stock-card-body">
@@ -102,7 +109,11 @@ export default function StockCard({ stock }: StockCardProps) {
           <p className={isUp ? 'positive-text' : 'negative-text'}>{stock.change} today</p>
         </div>
 
-        <Link to={`/stock/${stock.symbol}`} className="secondary-link">
+        <Link
+          to={`/stock/${stock.symbol.toLowerCase()}`}
+          className="secondary-link"
+          aria-label={`View ${stock.symbol} detail`}
+        >
           View Detail
         </Link>
       </div>

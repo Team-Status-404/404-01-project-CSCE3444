@@ -9,8 +9,12 @@ export default function Sidebar() {
   const links = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Markets', path: '/markets' },
+    { label: 'Trending', path: '/trending' },
     ...(isAuthenticated
-      ? [{ label: 'Profile', path: '/profile' }]
+      ? [
+          { label: 'Watchlist', path: '/watchlist' },
+          { label: 'Profile', path: '/profile' },
+        ]
       : [{ label: 'Login', path: '/login' }]),
   ];
 
@@ -22,9 +26,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <img src="/logo.png" alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
+        <img src="/logo.png" alt="StockIq Logo" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
         <div>
-          <p className="brand-name">StockIQ</p>
+          <span className="brand-name">StockIQ</span>
           <p className="brand-subtitle">Fintech UI</p>
         </div>
       </div>

@@ -11,7 +11,7 @@ export default function TopBar({ title, subtitle, actionLabel, actionTo }: TopBa
   return (
     <div className="topbar">
       <div>
-        <h1>{title}</h1>
+        <h1 className="gradient-text">{title}</h1>
         <p>{subtitle}</p>
       </div>
       {actionLabel && actionTo ? (

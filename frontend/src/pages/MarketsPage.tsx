@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, Legend, LineChart, Area 
+import {
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend, LineChart
 } from 'recharts';
-
-// Component Imports
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
 import InfoTooltip from '../components/InfoTooltip';
-import { useAuth } from '../context/AuthContext';
+import TrendingStocks from '../components/TrendingStocks';
 import { TOOLTIP_COPY } from '../constants/tooltipCopy';
 
-// --- TYPES & INTERFACES ---
+// UC-08 interface
+interface MarketData {
+  currentPrice: number;
+  chartData: Array<{ day: string; SPY: number; sentiment: number }>;
+}
+
+// UC-17 interfaces
 interface StockMetric {
   symbol: string;
   price: string;
@@ -21,31 +24,14 @@ interface StockMetric {
 
 interface ComparisonResult {
   metrics: StockMetric;
-  history: any[];
+  history: Record<string, unknown>[];
 }
 
-// --- SPRINT 2 MOCK DATA (Retained for UI Consistency) ---
-const mockIndexData = [
-  { time: '09:30', SP500: 5050, sentiment: 55 },
-  { time: '11:00', SP500: 5080, sentiment: 62 },
-  { time: '13:00', SP500: 5065, sentiment: 48 },
-  { time: '15:00', SP500: 5090, sentiment: 70 },
-  { time: '16:00', SP500: 5104, sentiment: 82 },
-];
-
-const trendingStocks = [
-  { ticker: 'NVDA', name: 'NVIDIA Corp', price: '$924.79', change: '+2.48%', isUp: true },
-  { ticker: 'SMCI', name: 'Super Micro', price: '$1,024.10', change: '+32.8%', isUp: true },
-  { ticker: 'ARM', name: 'ARM Holdings', price: '$129.43', change: '+4.1%', isUp: true },
-  { ticker: 'PLTR', name: 'Palantir', price: '$24.50', change: '+1.2%', isUp: true }
-];
-
 export default function MarketsPage() {
-  const { user } = useAuth();
-  
-  // UI States
-  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [addingTicker, setAddingTicker] = useState<string | null>(null);
+  // UC-08: Live SPY state
+  const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // UC-17 Logic States
   const [compareInput, setCompareInput] = useState('');
@@ -53,37 +39,35 @@ export default function MarketsPage() {
   const [loadingCompare, setLoadingCompare] = useState(false);
   const [errorCompare, setErrorCompare] = useState<string | null>(null);
 
-  // --- HANDLERS ---
+  // UC-08: Fetch real SPY data on mount to serve as our S&P 500 proxy
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/stock/SPY`);
+        const json = await res.json();
 
-  const handleAddStock = async (e: React.MouseEvent, ticker: string) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-    if (!user) return;
+        if (res.ok && json.status === 'success') {
+          const { currentPrice, graph_data } = json.data;
 
-    setAddingTicker(ticker);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify({ user_id: user.user_id, ticker: ticker })
-      });
+          const formattedData = graph_data.historical_prices.map((price: number, idx: number) => ({
+            day: `Day ${idx + 1}`,
+            SPY: price,
+            sentiment: graph_data.historical_sentiment[idx] ?? 0
+          }));
 
-      const data = await res.json();
-      if (data.status === 'success') {
-        setFeedback({ message: `${ticker} successfully added to your watchlist!`, type: 'success' });
-      } else {
-        setFeedback({ message: data.message || 'Failed to add stock.', type: 'error' });
+          setMarketData({ currentPrice, chartData: formattedData });
+        } else {
+          setError(json.message || "Failed to load market data.");
+        }
+      } catch {
+        setError("Network error while fetching market data.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setFeedback({ message: 'Network error. Please check your connection.', type: 'error' });
-    } finally {
-      setAddingTicker(null);
-      setTimeout(() => setFeedback(null), 4000);
-    }
-  };
+    };
+
+    fetchMarketData();
+  }, []);
 
   const handleCompare = async () => {
     const tickers = compareInput.toUpperCase().split(/[ ,]+/).filter(t => t.length > 0);
@@ -101,14 +85,14 @@ export default function MarketsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickers })
       });
-      
+
       const result = await response.json();
       if (result.status === 'success') {
         setComparisonData(result.data);
       } else {
         setErrorCompare(result.message || "Could not fetch comparison data.");
       }
-    } catch (error) {
+    } catch {
       setErrorCompare("Server error. Ensure the Python backend is running.");
     } finally {
       setLoadingCompare(false);
@@ -116,8 +100,8 @@ export default function MarketsPage() {
   };
 
   // Transformation Logic for Multi-Line Chart
-  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: any, i: number) => {
-    let point: any = { date: day.date };
+  const chartData = comparisonData.length > 0 ? comparisonData[0].history.map((day: Record<string, unknown>, i: number) => {
+    const point: Record<string, unknown> = { date: day.date };
     comparisonData.forEach(stock => {
       if (stock.history[i]) {
         point[stock.metrics.symbol] = stock.history[i][stock.metrics.symbol];
@@ -128,103 +112,101 @@ export default function MarketsPage() {
 
   return (
     <Layout>
-      <TopBar 
-        title="Markets Overview" 
-        subtitle="Real-time performance tracking and comparative market intelligence." 
+      <TopBar
+        title="Markets Overview"
+        subtitle="Live tracking of major indices and trending social sentiment."
       />
 
-      <div style={{ padding: '0 24px', maxWidth: '1600px', margin: '0 auto' }}>
-        
-        {/* UPPER SECTION: Sprint 2 Market Summary */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '24px', marginBottom: '32px' }}>
-          
-          {/* Main Index Card */}
-          <article className="card" style={{ padding: '28px', minHeight: '480px', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h2 style={{ margin: 0, fontSize: '1.75rem' }}>S&P 500 Index</h2>
-                  <InfoTooltip content={TOOLTIP_COPY.MARKET_SENTIMENT} />
-                </div>
-                <p className="muted-label" style={{ marginTop: '4px' }}>Daily Momentum & Sentiment Analysis</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <strong style={{ fontSize: '2.25rem', lineHeight: 1 }}>5,104.76</strong>
-                <span className="positive-text" style={{ fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                  +1.03% (+$52.34)
-                </span>
+      {/* UC-08: Live Market Pulse Section */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '32px', padding: '0 24px', maxWidth: '1200px', margin: '0 auto' }}>
+
+        <article className="card hero-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '2rem' }}>S&P 500 (SPY)</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <p className="muted-label" style={{ margin: 0 }}>Market Pulse: 5-Day Price vs. Sentiment</p>
+                <InfoTooltip content={TOOLTIP_COPY.MARKET_SENTIMENT || "Comparing market price against social hype."} />
               </div>
             </div>
 
-            <div style={{ height: '320px', width: '100%' }}>
+            <div style={{ textAlign: 'right' }}>
+              {isLoading ? (
+                <span style={{ color: '#94a3b8' }}>Loading live data...</span>
+              ) : marketData ? (
+                <strong style={{ fontSize: '2rem', display: 'block' }}>
+                  ${marketData.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </strong>
+              ) : (
+                <span style={{ color: '#ef4444' }}>Data unavailable</span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: '350px', width: '100%' }}>
+            {isLoading ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                <div className="animate-pulse">Fetching market pulse...</div>
+              </div>
+            ) : error ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                {error}
+              </div>
+            ) : marketData && (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={mockIndexData}>
-                  <defs>
-                    <linearGradient id="colorSP" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <ComposedChart data={marketData.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="time" stroke="#64748b" tick={{ fontSize: 12 }} dy={10} />
-                  <YAxis yAxisId="left" stroke="#38bdf8" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#4ade80" domain={[0, 100]} hide />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
-                    itemStyle={{ fontSize: '14px' }}
+                  <XAxis dataKey="day" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#38bdf8"
+                    domain={['auto', 'auto']}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${value}`}
                   />
-                  <Legend verticalAlign="top" height={36}/>
-                  <Area yAxisId="left" type="monotone" dataKey="SP500" stroke="#38bdf8" fillOpacity={1} fill="url(#colorSP)" name="Index Price" />
-                  <Bar yAxisId="right" dataKey="sentiment" fill="#4ade80" opacity={0.2} radius={[4, 4, 0, 0]} name="Market Mood" />
-                  <Line yAxisId="left" type="monotone" dataKey="SP500" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9' }} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#4ade80"
+                    domain={[0, 100]}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                    labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="sentiment"
+                    fill="#4ade80"
+                    opacity={0.3}
+                    radius={[4, 4, 0, 0]}
+                    name="Market Sentiment"
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="SPY"
+                    stroke="#38bdf8"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#38bdf8', strokeWidth: 0 }}
+                    activeDot={{ r: 6 }}
+                    name="SPY Price"
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
-          </article>
-
-          {/* Trending Sidebar */}
-          <article className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Trending Activity</h3>
-              <InfoTooltip content={TOOLTIP_COPY.TRENDING_STOCKS} />
-            </div>
-
-            {feedback && (
-              <div className={`feedback-message ${feedback.type}`} style={{ marginBottom: '16px', padding: '10px', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}>
-                {feedback.message}
-              </div>
             )}
+          </div>
+        </article>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {trendingStocks.map((stock) => (
-                <Link key={stock.ticker} to={`/stock/${stock.ticker.toLowerCase()}`} className="trending-item-row" style={{ textDecoration: 'none' }}>
-                  <div className="trending-inner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderRadius: '12px', background: '#1e293b50', transition: 'background 0.2s' }}>
-                    <div>
-                      <strong style={{ color: '#f8fafc', fontSize: '1.1rem' }}>{stock.ticker}</strong>
-                      <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{stock.name}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 600, color: '#f8fafc' }}>{stock.price}</div>
-                        <div className="positive-text" style={{ fontSize: '0.85rem' }}>{stock.change}</div>
-                      </div>
-                      <button 
-                        onClick={(e) => handleAddStock(e, stock.ticker)}
-                        className="icon-add-btn"
-                        disabled={addingTicker === stock.ticker}
-                        style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#334155', color: 'white', cursor: 'pointer' }}
-                      >
-                        {addingTicker === stock.ticker ? '...' : '+'}
-                      </button>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </article>
-        </section>
+        {/* UC-08: Trending Stocks Component */}
+        <TrendingStocks />
 
-        {/* LOWER SECTION: UC-17 Market Comparison Tool */}
+      </section>
+
+      {/* UC-17 Market Comparison Tool */}
+      <div style={{ padding: '0 24px', maxWidth: '1600px', margin: '0 auto' }}>
         <section style={{ paddingBottom: '60px' }}>
           <article className="card" style={{ padding: '32px', borderRadius: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '24px' }}>
@@ -235,19 +217,19 @@ export default function MarketsPage() {
 
             <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
               <div style={{ flex: 1, position: 'relative' }}>
-                <input 
+                <input
                   value={compareInput}
                   onChange={(e) => setCompareInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompare()}
-                  placeholder="Enter tickers to compare (e.g. AAPL, TSLA, MSFT)" 
+                  placeholder="Enter tickers to compare (e.g. AAPL, TSLA, MSFT)"
                   style={{ width: '100%', padding: '16px 20px', borderRadius: '14px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '1rem' }}
                 />
                 {errorCompare && <p style={{ color: '#ef4444', fontSize: '0.85rem', position: 'absolute', bottom: '-22px', left: '4px' }}>{errorCompare}</p>}
               </div>
-              <button 
-                onClick={handleCompare} 
+              <button
+                onClick={handleCompare}
                 disabled={loadingCompare}
-                className="primary-btn" 
+                className="primary-btn"
                 style={{ padding: '0 40px', borderRadius: '14px', fontWeight: 600 }}
               >
                 {loadingCompare ? 'Analyzing...' : 'Compare Assets'}
@@ -256,7 +238,7 @@ export default function MarketsPage() {
 
             {comparisonData.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '40px', marginTop: '20px', animation: 'fadeIn 0.5s ease-in' }}>
-                
+
                 {/* Comparison Stats Sidebar */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {comparisonData.map((s, idx) => (
@@ -279,17 +261,17 @@ export default function MarketsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                       <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 11 }} />
                       <YAxis stroke="#64748b" tick={{ fontSize: 11 }} label={{ value: 'Relative Growth (%)', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: '12px' } }} />
-                      <Tooltip 
-                        contentStyle={{ background: '#0b1221', border: '1px solid #1e293b', borderRadius: '10px' }} 
+                      <Tooltip
+                        contentStyle={{ background: '#0b1221', border: '1px solid #1e293b', borderRadius: '10px' }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                       {comparisonData.map((s, i) => (
-                        <Line 
-                          key={s.metrics.symbol} 
-                          type="monotone" 
-                          dataKey={s.metrics.symbol} 
-                          stroke={['#38bdf8', '#4ade80', '#fbbf24', '#a855f7'][i % 4]} 
-                          strokeWidth={2.5} 
+                        <Line
+                          key={s.metrics.symbol}
+                          type="monotone"
+                          dataKey={s.metrics.symbol}
+                          stroke={['#38bdf8', '#4ade80', '#fbbf24', '#a855f7'][i % 4]}
+                          strokeWidth={2.5}
                           dot={false}
                           activeDot={{ r: 6 }}
                         />
