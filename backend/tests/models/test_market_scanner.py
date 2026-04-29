@@ -7,7 +7,7 @@ All external dependencies (threading) are mocked to ensure non-blocking executio
 
 import pytest
 from unittest.mock import MagicMock, patch
-from backend.models.market_scanner import start_market_scanner
+from models.market_scanner import start_market_scanner
 
 def test_start_market_scanner_valid_engine_starts_daemon_thread():
     """
@@ -19,7 +19,7 @@ def test_start_market_scanner_valid_engine_starts_daemon_thread():
 
     # Act & Assert
     # We patch threading.Thread where it is used in the market_scanner module
-    with patch("backend.models.market_scanner.threading.Thread") as mock_thread_class:
+    with patch("models.market_scanner.threading.Thread") as mock_thread_class:
         
         # Call the function
         start_market_scanner(mock_sentiment_engine)
