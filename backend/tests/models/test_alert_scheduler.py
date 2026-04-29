@@ -11,7 +11,7 @@ import os
 
 
 # ==========================================
- # TESTS: get_user_email
+# TESTS: get_user_email
 # ==========================================
 
 class TestGetUserEmail:
