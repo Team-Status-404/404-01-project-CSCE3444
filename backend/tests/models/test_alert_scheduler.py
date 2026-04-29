@@ -5,7 +5,6 @@ Tests cover: get_user_email, trigger_notification, check_alerts, record_daily_hy
 All external dependencies (DB, SMTP, sentiment engine) are mocked.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock, call
 import os
 
