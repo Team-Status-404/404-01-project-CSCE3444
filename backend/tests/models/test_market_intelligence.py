@@ -4,7 +4,6 @@ Team 404
 All external dependencies (DB, APIs, yfinance) are mocked.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 
