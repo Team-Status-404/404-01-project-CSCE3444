@@ -5,7 +5,6 @@ Tests cover: start_market_scanner
 All external dependencies (threading) are mocked to ensure non-blocking execution.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 from models.market_scanner import start_market_scanner
 
