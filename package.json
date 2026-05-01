@@ -1,0 +1,24 @@
+{
+  "name": "404-01-project-csce3444",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"cd backend && python app.py\" \"cd frontend && npm run dev\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Team-Status-404/404-01-project-CSCE3444.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Team-Status-404/404-01-project-CSCE3444/issues"
+  },
+  "homepage": "https://github.com/Team-Status-404/404-01-project-CSCE3444#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
