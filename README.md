@@ -58,44 +58,47 @@
 
 ## Getting Started (Local Development)
 
-To run the StockIQ application locally, ensure you have **Python 3.8+** and **Node.js** installed on your machine. You will need to run the backend and frontend in two separate terminal windows.
+To get this project running locally, you will need to have **Python 3**, **Node.js**, and **npm** installed on your machine.
 
-### 1. Start the Backend (Flask)
-Open a new terminal and navigate to the project root, then run the following commands:
+### 1. Run the Setup Script
+We have provided initialization scripts that will automatically create your Python virtual environment, install all backend and frontend dependencies, and generate your local `.env` files.
 
-```bash
+**For macOS / Linux:**
+Open your terminal in the root directory and run:
+\`\`\`bash
+bash init-mac.sh
+\`\`\`
+
+**For Windows:**
+Double-click the script in your file explorer, or run this in your Command Prompt:
+\`\`\`bat
+init-windows.bat
+\`\`\`
+
+### 2. Configure Environment Variables
+The setup script automatically creates `.env` files in both the `/backend` and `/frontend` directories. You will need to open them and fill in the missing values:
+* **DB_PASSWORD:** (Ask Lance for the current password)
+* **NEWSDATA_API_KEY:** (Obtain from your newsdata.io dashboard)
+* **GOOGLE_CLIENT_ID / VITE_GOOGLE_CLIENT_ID:** (Obtain from Google Cloud Console)
+
+### 3. Run the Application
+Once setup is complete, you will need two terminal windows to run the full stack:
+
+**Terminal 1 (Backend):**
+\`\`\`bash
 cd backend
-
-# Create a virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start the Flask server
+# On Mac/Linux: source venv/bin/activate
+# On Windows: venv\Scripts\activate
 python app.py
-```
+\`\`\`
 
-### 2. Start the Frontend (React/Vite)
-Open a second terminal window, navigate to the project root, and run:
-
-```bash
+**Terminal 2 (Frontend):**
+\`\`\`bash
 cd frontend
-
-# Install Node dependencies
-npm install
-
-# Start the Vite development server
 npm run dev
-```
+\`\`\`
 
-The frontend will typically be accessible at `http://localhost:5173/` (check your terminal output for the exact local URL).
+Finally, open your browser and navigate to **http://localhost:5173** to view the application!
 
 ## Team Roster
 
@@ -109,7 +112,7 @@ The frontend will typically be accessible at `http://localhost:5173/` (check you
   * **Role:** Repository Owner / Developer
   * **EUID:** lat0242
   * **Email:** LanceJosephTrasporto@my.unt.edu
-  * **Phone:** 940 758 2193	
+  * **Phone:** 940 758 2193    
 
 * **Patel Jeel**
   * **Role:** Developer
